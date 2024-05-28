@@ -25,4 +25,5 @@ export const ArmStateKeys = {
   armCommonDefinitions: azureResourceManagerCreateStateSymbol("armCommonDefinitions"),
   armCommonParameters: azureResourceManagerCreateStateSymbol("armCommonParameters"),
   armCommonTypesVersions: azureResourceManagerCreateStateSymbol("armCommonTypesVersions"),
+  armConditionalFlattening: azureResourceManagerCreateStateSymbol("armConditionalFlattening"),
 };

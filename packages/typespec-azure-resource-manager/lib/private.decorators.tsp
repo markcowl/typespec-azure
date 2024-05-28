@@ -82,3 +82,8 @@ extern dec resourceParameterBaseFor(target: ModelProperty, values: unknown[]);
  * Marks an enum as representing the valid `common-types` versions.
  */
 extern dec armCommonTypesVersions(target: Enum);
+
+/**
+ * Marks the property as conditionally flattened for those emitters that use flattening
+ */
+extern dec conditionalFlattening(target: ModelProperty);

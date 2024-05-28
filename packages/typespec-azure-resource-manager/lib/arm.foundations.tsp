@@ -504,7 +504,7 @@ model ResourceUpdateModel<
   Resource extends ArmResource,
   Properties extends TypeSpec.Reflection.Model
 > is OptionalProperties<UpdateableProperties<OmitProperties<Resource, "Name" | "name">>> {
-  @extension("x-ms-client-flatten", true)
+  @conditionalFlattening
   properties?: ResourceUpdateModelProperties<Resource, Properties>;
 }
 
@@ -633,7 +633,7 @@ model ProxyResourceUpdateModel<
   Resource extends ArmResource,
   Properties extends TypeSpec.Reflection.Model
 > {
-  @extension("x-ms-client-flatten", true)
+  @conditionalFlattening
   properties?: ResourceUpdateModelProperties<Resource, Properties>;
 }
 

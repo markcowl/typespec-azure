@@ -20,7 +20,7 @@ namespace Azure.ResourceManager;
 model TrackedResource<Properties extends {}> extends TrackedResourceBase {
   @doc("The resource-specific properties for this resource.")
   @visibility("read", "create")
-  @extension("x-ms-client-flatten", true)
+  @conditionalFlattening
   properties?: Properties;
 }
 
@@ -36,7 +36,7 @@ model TrackedResource<Properties extends {}> extends TrackedResourceBase {
 model ProxyResource<Properties extends {}> extends ProxyResourceBase {
   @doc("The resource-specific properties for this resource.")
   @visibility("read", "create")
-  @extension("x-ms-client-flatten", true)
+  @conditionalFlattening
   properties?: Properties;
 }
 
@@ -53,7 +53,7 @@ model ProxyResource<Properties extends {}> extends ProxyResourceBase {
 model ExtensionResource<Properties extends {}> extends ExtensionResourceBase {
   @doc("The resource-specific properties for this resource.")
   @visibility("read", "create")
-  @extension("x-ms-client-flatten", true)
+  @conditionalFlattening
   properties?: Properties;
 }
 //#region

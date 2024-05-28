@@ -534,3 +534,23 @@ export function $armCommonTypesVersions(context: DecoratorContext, enumType: Enu
     allVersions: Array.from(enumType.members.values()).reverse(),
   });
 }
+
+/**
+ * Mark a model property as being conditionally flattened
+ * @param context decorator context
+ * @param target The ModelProperty being decorated
+ */
+export function $conditionalFlattening(context: DecoratorContext, target: ModelProperty) {
+  const { program } = context;
+  program.stateMap(ArmStateKeys.armConditionalFlattening).set(target, true);
+}
+
+/**
+ * Determines whether a model proeprty should be conditionally flattened
+ * @param program The Program being processed
+ * @param property The property to check to see if it should be conditionally flattened
+ * @returns true if the proeprty is condisiotnally flattened, false otherwise
+ */
+export function isConditionallyFlattened(program: Program, property: ModelProperty) {
+  return program.stateMap(ArmStateKeys.armConditionalFlattening).has(property);
+}
