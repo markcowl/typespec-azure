@@ -200,7 +200,11 @@ interface PrivateEndpoints<
    * @template Error Optional. The error response, if non-standard.
    * @template OverrideResourceName Optional. The name of the private endpoint connection resource being operated on.
    */
+  @autoRoute
+  @doc("Create a {name} PrivateEndpointConnection", ParentResource)
+  @builtInResourceOperation(ParentResource, Resource, "createOrUpdate", OverrideResourceName)
   @Private.enforceConstraint(ParentResource, Foundations.Resource)
+  @put
   CreateOrReplaceAsync<
     ParentResource extends Foundations.SimpleResource,
     Resource extends PrivateEndpointConnectionResource = PrivateEndpointResource,
@@ -214,15 +218,13 @@ interface PrivateEndpoints<
     >,
     Error extends {} = ErrorResponse,
     OverrideResourceName extends valueof string = "${ResourceName}"
-  > is PrivateEndpoints.CreateOrUpdateAsync<
-    ParentResource,
+  > is ArmCreateOperation<
+    ResourceInstanceParameters<ParentResource, BaseParameters> &
+      KeysOf<PrivateEndpointConnectionParameter> &
+      Parameters,
     Resource,
-    BaseParameters,
-    LroHeaders,
-    Parameters,
     Response,
-    Error,
-    OverrideResourceName
+    Error
   >;
 
   /**
@@ -325,15 +327,11 @@ interface PrivateEndpoints<
     Response extends {} = ArmDeleteAcceptedLroResponse<LroHeaders> | ArmDeletedNoContentResponse,
     Error extends {} = ErrorResponse,
     OverrideResourceName extends valueof string = "${ResourceName}"
-  > is PrivateEndpoints.DeleteAsyncBase<
-    ParentResource,
-    Response,
-    Resource,
-    BaseParameters,
-    Parameters,
-    Error,
-    OverrideResourceName
-  >;
+  >(
+    ...ResourceInstanceParameters<ParentResource, BaseParameters>,
+    ...KeysOf<PrivateEndpointConnectionParameter>,
+    ...Parameters,
+  ): Response | Error;
 
   /**
    * @dev Delete a PrivateEndpointConnection to a resource synchronously
