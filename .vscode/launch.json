@@ -127,6 +127,26 @@
     {
       "type": "node",
       "request": "launch",
+      "name": "Compile Contoso",
+      "program": "${workspaceRoot}/core/packages/compiler/entrypoints/cli.js",
+      "args": ["compile", "${workspaceRoot}/packages/samples/specs/resource-manager/contoso/main.tsp", "--emit=@azure-tools/typespec-autorest"],
+      "smartStep": true,
+      "sourceMaps": true,
+      "skipFiles": ["<node_internals>/**/*.js"],
+      "outFiles": [
+        "${workspaceFolder}/packages/*/dist/**/*.js",
+        "${workspaceFolder}/packages/*/dist-dev/**/*.js",
+        "${workspaceFolder}/core/packages/*/dist/**/*.js",
+        "${workspaceFolder}/core/packages/*/dist-dev/**/*.js"
+      ],
+      "cwd": "${workspaceRoot}/core/packages/compiler",
+      "presentation": {
+        "order": 2
+      }
+    },
+    {
+      "type": "node",
+      "request": "launch",
       "name": "Compile Scratch",
       "program": "${workspaceRoot}/core/packages/compiler/entrypoints/cli.js",
       "args": ["compile", ".", "--emit=@azure-tools/typespec-autorest"],

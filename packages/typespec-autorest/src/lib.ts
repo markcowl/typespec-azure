@@ -119,6 +119,21 @@ export interface AutorestEmitterOptions {
    * @default "xml-service"
    */
   "xml-strategy"?: "xml-service" | "none";
+
+  /**
+   * How OpenAPI output should be organized into files
+   *
+   * - "single-file": All types for a single version in a single OpenAPI document (the default)
+   * - "feature-files": All types for a single version in an OpenAPI document matching the associated service feature (using decorators)
+   *
+   * @default "single-file"
+   */
+  "output-style"?: "single-file" | "feature-files";
+
+  /**
+   * If output-style: feature-files is selected, determines how each feature is mapped into files.  Using <feature-name>:<file-name>
+   */
+  "feature-files-map"?: Record<string, string>;
 }
 
 const EmitterOptionsSchema: JSONSchemaType<AutorestEmitterOptions> = {
@@ -250,6 +265,21 @@ const EmitterOptionsSchema: JSONSchemaType<AutorestEmitterOptions> = {
       nullable: true,
       default: "xml-service",
       description: "Strategy for applying XML serialization metadata to schemas.",
+    },
+    "output-style": {
+      type: "string",
+      enum: ["single-file", "feature-files"],
+      nullable: true,
+      default: "single-file",
+      description: "How OpenAPI output should be organized into files. Default is 'single-file'.",
+    },
+    "feature-files-map": {
+      type: "object",
+      nullable: true,
+      required: [],
+      additionalProperties: { type: "string" },
+      description:
+        "If output-style: feature-files is selected, determines how each feature is mapped into files.  Using <feature-name>:<file-name>",
     },
   },
   required: [],

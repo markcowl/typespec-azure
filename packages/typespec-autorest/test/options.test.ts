@@ -480,4 +480,29 @@ op test(): void;
       });
     });
   });
+
+  describe("'output-style'", () => {
+    it("emit no diagnostic if output-style is specified", async () => {
+      const runner = await ApiTester.emit("@azure-tools/typespec-autorest", {
+        "output-style": "feature-files",
+      });
+
+      const diagnostics = await runner.diagnose("op test(): void;");
+      expectDiagnosticEmpty(diagnostics);
+    });
+  });
+  describe("'feature-files-map'", () => {
+    it("emit no diagnostic if feature-files-map is specified", async () => {
+      const runner = await ApiTester.emit("@azure-tools/typespec-autorest", {
+        "output-style": "feature-files",
+        "feature-files-map": {
+          blue: "blue-feature.json",
+          red: "red-feature.json",
+        },
+      });
+
+      const diagnostics = await runner.diagnose("op test(): void;");
+      expectDiagnosticEmpty(diagnostics);
+    });
+  });
 });

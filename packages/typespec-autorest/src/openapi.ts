@@ -235,6 +235,16 @@ export interface AutorestDocumentEmitterOptions {
   readonly emitCommonTypesSchema?: "never" | "for-visibility-changes";
 
   readonly xmlStrategy: "xml-service" | "none";
+
+  /**
+   * Determines whether to output a single OpenAPI file or multiple feature files.
+   */
+  readonly outputStyle?: "single-file" | "feature-files";
+
+  /**
+   * If output-style: feature-files is selected, determines how each feature is mapped into files.  Using <feature-name>:<file-name>
+   */
+  readonly featureFilesMap?: Record<string, string>;
 }
 
 /**
@@ -247,6 +257,19 @@ class Ref {
   toJSON() {
     compilerAssert(this.value, "Reference value never set.");
     return this.value;
+  }
+}
+
+class MultiFileRef extends Ref {
+  sourceFeature?: string;
+}
+
+class OpenApiCollection {
+  fileMap: Map<string, OpenAPI2Document> = new Map();
+  getRefForFeature(feature: string): Ref {
+    const ref = new MultiFileRef();
+    ref.sourceFeature = feature;
+    return ref;
   }
 }
 

@@ -123,6 +123,8 @@ export function resolveAutorestOptions(
     armResourceFlattening: resolvedOptions["arm-resource-flattening"],
     emitCommonTypesSchema: resolvedOptions["emit-common-types-schema"],
     xmlStrategy: resolvedOptions["xml-strategy"],
+    outputStyle: resolvedOptions["output-style"] ?? "single-file",
+    featureFilesMap: resolvedOptions["feature-files-map"] ?? {},
   };
 }
 
