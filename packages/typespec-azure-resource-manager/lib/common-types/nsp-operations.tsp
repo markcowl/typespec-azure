@@ -145,7 +145,12 @@ interface NspConfigurationOperations<
    * @template Error Optional. The error response, if non-standard.
    * @template OverrideResourceName Optional. The name of the network security perimeter configuration resource being operated on.
    */
+  #suppress "@azure-tools/typespec-azure-core/no-legacy-usage" "Metching legacy API"
   @Versioning.added(Versions.v5)
+  @Azure.ResourceManager.Legacy.renamePathParameter(
+    "networkSecurityPerimeterConfigurationName",
+    KeyName
+  )
   @autoRoute
   @doc("Get a {name} NetworkSecurityPerimeterConfiguration", ParentResource)
   @get
@@ -166,4 +171,98 @@ interface NspConfigurationOperations<
     Response,
     Error
   >;
+
+  /**
+   * @dev GET a network security perimeter configuration for a particular resource
+   * @template ParentResource the parent resource of the NspConfiguration
+   * @template Resource the NspConfiguration resource being read
+   * @template BaseParameters Optional. Allows overriding the operation parameters
+   * @template KeyName Optional. The NSP configuration resource name parameter. By default, this is `networkSecurityPerimeterConfigurationName`
+   * @template Parameters Optional. Additional parameters after the path parameters
+   * @template Response Optional. The success response for the read operation
+   * @template Error Optional. The error response, if non-standard.
+   * @template OverrideResourceName Optional. The name of the network security perimeter configuration resource being operated on.
+   */
+  #suppress "@azure-tools/typespec-azure-core/no-legacy-usage" "Metching legacy API"
+  @Versioning.added(Versions.v5)
+  @Azure.ResourceManager.Legacy.renamePathParameter(
+    "networkSecurityPerimeterConfigurationName",
+    KeyName
+  )
+  @autoRoute
+  @Azure.ResourceManager.Private.enforceConstraint(ParentResource, Foundations.Resource)
+  @post
+  @returnsDoc("Azure operation completed successfully.")
+  @doc("Perform an action over {name} NetworkSecurityPerimeterConfiguration", ParentResource)
+  @builtInResourceOperation(ParentResource, Resource, "action", OverrideResourceName)
+  Action<
+    ParentResource extends Foundations.SimpleResource,
+    Resource extends NetworkSecurityPerimeterConfiguration = NspConfigurationResourceModel,
+    BaseParameters = DefaultBaseParameters<ParentResource>,
+    Request extends {} = Resource,
+    KeyName extends valueof string = NspConfigurationKeyName,
+    Parameters extends {} = {},
+    Response extends {} = ArmResponse<Resource>,
+    Error extends {} = ErrorResponse,
+    OverrideResourceName extends valueof string = "${ResourceName}",
+    OptionalRequestBody extends valueof boolean = false
+  >(
+    ...ResourceInstanceParameters<ParentResource, BaseParameters>,
+    ...KeysOf<NetworkSecurityPerimeterConfigurationNameParameter>,
+    ...Parameters,
+
+    @doc("The content of the action request")
+    @armBodyRoot(OptionalRequestBody)
+    body: Request,
+  ): Response | Error;
+
+  /**
+   * @dev GET a network security perimeter configuration for a particular resource
+   * @template ParentResource the parent resource of the NspConfiguration
+   * @template Resource the NspConfiguration resource being read
+   * @template BaseParameters Optional. Allows overriding the operation parameters
+   * @template KeyName Optional. The NSP configuration resource name parameter. By default, this is `networkSecurityPerimeterConfigurationName`
+   * @template Parameters Optional. Additional parameters after the path parameters
+   * @template Response Optional. The success response for the read operation
+   * @template Error Optional. The error response, if non-standard.
+   * @template OverrideResourceName Optional. The name of the network security perimeter configuration resource being operated on.
+   */
+  #suppress "@azure-tools/typespec-azure-core/no-legacy-usage" "Metching legacy API"
+  @Versioning.added(Versions.v5)
+  @Azure.ResourceManager.Legacy.renamePathParameter(
+    "networkSecurityPerimeterConfigurationName",
+    KeyName
+  )
+  @autoRoute
+  @Azure.ResourceManager.Private.enforceConstraint(ParentResource, Foundations.Resource)
+  @post
+  @returnsDoc("Azure operation completed successfully.")
+  @doc("Perform an action over {name} NetworkSecurityPerimeterConfiguration", ParentResource)
+  @builtInResourceOperation(ParentResource, Resource, "action", OverrideResourceName)
+  ActionAsync<
+    ParentResource extends Foundations.SimpleResource,
+    Resource extends NetworkSecurityPerimeterConfiguration = NspConfigurationResourceModel,
+    BaseParameters = DefaultBaseParameters<ParentResource>,
+    Request extends {} = Resource,
+    KeyName extends valueof string = NspConfigurationKeyName,
+    Parameters extends {} = {},
+    Response extends {} = ArmResponse<Resource>,
+    LroHeaders extends TypeSpec.Reflection.Model = ArmLroLocationHeader<
+      Azure.Core.StatusMonitorPollingOptions<ArmOperationStatus>,
+      Response,
+      string
+    > &
+      Azure.Core.Foundations.RetryAfterHeader,
+    Error extends {} = ErrorResponse,
+    OverrideResourceName extends valueof string = "${ResourceName}",
+    OptionalRequestBody extends valueof boolean = false
+  >(
+    ...ResourceInstanceParameters<ParentResource, BaseParameters>,
+    ...KeysOf<NetworkSecurityPerimeterConfigurationNameParameter>,
+    ...Parameters,
+
+    @doc("The content of the action request")
+    @armBodyRoot(OptionalRequestBody)
+    body: Request,
+  ): ArmAcceptedLroResponse<"Resource operation accepted.", LroHeaders> | Response | Error;
 }
