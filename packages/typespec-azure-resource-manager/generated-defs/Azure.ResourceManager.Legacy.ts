@@ -16,6 +16,20 @@ export interface ArmOperationOptions {
 }
 
 /**
+ * Renames a path parameter in an Azure Resource Manager operation.
+ *
+ * @param target The operation or interface to modify
+ * @param sourceParameterName The name of the parameter to rename
+ * @param targetParameterName The new name for the parameter
+ */
+export type RenamePathParameterDecorator = (
+  context: DecoratorContext,
+  target: Operation,
+  sourceParameterName: string,
+  targetParameterName: string,
+) => DecoratorValidatorCallbacks | void;
+
+/**
  * This decorator is used on resources that do not satisfy the definition of a resource
  * but need to be identified as such.
  *
@@ -61,24 +75,10 @@ export type ArmExternalTypeDecorator = (
   target: Model,
 ) => DecoratorValidatorCallbacks | void;
 
-/**
- * Renames a path parameter in an Azure Resource Manager operation.
- *
- * @param target The operation or interface to modify
- * @param sourceParameterName The name of the parameter to rename
- * @param targetParameterName The new name for the parameter
- */
-export type RenamePathParameterDecorator = (
-  context: DecoratorContext,
-  target: Operation,
-  sourceParameterName: string,
-  targetParameterName: string,
-) => DecoratorValidatorCallbacks | void;
-
 export type AzureResourceManagerLegacyDecorators = {
+  renamePathParameter: RenamePathParameterDecorator;
   customAzureResource: CustomAzureResourceDecorator;
   externalTypeRef: ExternalTypeRefDecorator;
   armOperationRoute: ArmOperationRouteDecorator;
   armExternalType: ArmExternalTypeDecorator;
-  renamePathParameter: RenamePathParameterDecorator;
 };
