@@ -88,20 +88,6 @@ export type ArmExternalTypeDecorator = (
 ) => DecoratorValidatorCallbacks | void;
 
 /**
- * Renames a path parameter in an Azure Resource Manager operation.
- *
- * @param target The operation or interface to modify
- * @param sourceParameterName The name of the parameter to rename
- * @param targetParameterName The new name for the parameter
- */
-export type RenamePathParameterDecorator = (
-  context: DecoratorContext,
-  target: Operation,
-  sourceParameterName: string,
-  targetParameterName: string,
-) => DecoratorValidatorCallbacks | void;
-
-/**
  * Decorator to define a set of features
  *
  * @param target The service namespace
