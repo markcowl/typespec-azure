@@ -38,6 +38,8 @@ This document outlines the TypeSpec ecosystem's strategic direction for Summer 2
 | False positive rate | TBD | < 5% |
 | Service team satisfaction (quarterly survey) | TBD | > 4/5 rating |
 
+### TypeSpec Breaking Change Detection
+
 - **Pri 0** — Replace the OpenAPI Breaking Change Tool with a TypeSpec-native equivalent
 - Detect breaking changes directly from TypeSpec source (not from generated OpenAPI)
 - Support versioning-aware diff that understands `@added`/`@removed` decorators
@@ -81,6 +83,8 @@ This document outlines the TypeSpec ecosystem's strategic direction for Summer 2
 | Example generation correctness (valid on first attempt) | TBD | > 95% |
 | Service team satisfaction (quarterly survey) | TBD | > 4/5 rating |
 
+### TypeSpec Examples and Documentation
+
 - **Pri 0** — Add TypeSpec equivalents to API documentation in the RPaaS wiki and ARM RPC
 - Ensure all API guidance references TypeSpec as the primary authoring format
 - Provide migration guides for teams still using OpenAPI 2.0 specs
@@ -92,9 +96,9 @@ This document outlines the TypeSpec ecosystem's strategic direction for Summer 2
 **Metrics:**
 | Metric | Baseline | Target |
 |--------|----------|--------|
-| % of ARM RPC docs with TypeSpec examples | TBD | 100% |
-| % of RPaaS wiki pages with TypeSpec guidance | TBD | 100% |
-| New specs authored in TypeSpec (vs. OpenAPI) | TBD | > 95% |
+| Time for service teams to find TypeSpec guidance for their scenario | TBD | < 5 minutes |
+| Time for RPaaS teams to find scenario-specific guidance without asking for help | TBD | < 5 minutes |
+| Time for migrating teams to produce first successful TypeSpec PR | TBD | < 1 day |
 
 ### SDK Language Team Migration
 
@@ -109,8 +113,8 @@ This document outlines the TypeSpec ecosystem's strategic direction for Summer 2
 **Metrics:**
 | Metric | Baseline | Target |
 |--------|----------|--------|
-| % of SDK teams consuming OpenAPI 3.0 or TypeSpec directly | TBD | 100% by Winter 2026-27 |
-| Number of active OpenAPI 2.0 pipeline dependencies | TBD | 0 by Winter 2026-27 |
+| SDK team time spent on format-conversion workarounds | TBD | Eliminate entirely by Winter 2026-27 |
+| Pipeline failures or rework caused by OpenAPI 2.0 conversion | TBD | 0 by Winter 2026-27 |
 | SDK generation errors caused by format conversion | TBD | Eliminate entirely |
 
 ---
@@ -134,10 +138,12 @@ This document outlines the TypeSpec ecosystem's strategic direction for Summer 2
 | Metric | Baseline | Target |
 |--------|----------|--------|
 | Time to author a new resource type spec | TBD | 50% reduction |
-| Suggestion acceptance rate | TBD | > 40% |
+| Manual editing time avoided by accepting AI suggestions | TBD | 30% reduction in total authoring time |
 | Spec correctness on first CI run (AI-assisted) | TBD | > 80% |
 | Time to first successful PR for new TypeSpec authors | TBD | 50% reduction |
 | Service team satisfaction (quarterly survey) | TBD | > 4/5 rating |
+
+### API Version Extraction Workflow
 
 - **Pri 1** — Automated extraction of new API versions from existing specs
 - Support complex versioning patterns (additive, breaking, preview/GA transitions)
@@ -156,6 +162,8 @@ This document outlines the TypeSpec ecosystem's strategic direction for Summer 2
 | Manual version decorator edits required | TBD | < 5 per version extraction |
 | Service team satisfaction (quarterly survey) | TBD | > 4/5 rating |
 
+### Spec Validation and Simplification
+
 - AI-driven tools to validate specs against Azure guidelines
 - Automated simplification of specs based on new patterns and templates
 - Detect and suggest refactoring opportunities (e.g., migrate to newer ARM templates)
@@ -167,8 +175,8 @@ This document outlines the TypeSpec ecosystem's strategic direction for Summer 2
 **Metrics:**
 | Metric | Baseline | Target |
 |--------|----------|--------|
-| Guideline violations caught before review | TBD | > 90% |
-| Specs successfully simplified (automated) | TBD | > 50% of eligible specs |
+| Review cycles reduced by catching guideline issues pre-submission | TBD | 50% fewer review round-trips |
+| Manual simplification effort saved per spec | TBD | > 2 hours per spec |
 | API contract preservation rate (after simplification) | TBD | 100% |
 
 ### Best Practice Documentation and Samples
@@ -187,8 +195,8 @@ This document outlines the TypeSpec ecosystem's strategic direction for Summer 2
 **Metrics:**
 | Metric | Baseline | Target |
 |--------|----------|--------|
-| Documentation coverage for common azure-core patterns | TBD | 100% |
-| Documentation coverage for common ARM patterns | TBD | 100% |
+| Time for authors to find azure-core guidance for a common scenario | TBD | < 5 minutes |
+| Time for authors to find ARM guidance for a common scenario | TBD | < 5 minutes |
 | AI tool accuracy when using docs as context | TBD | 30% improvement |
 | Service team satisfaction with documentation (survey) | TBD | > 4/5 rating |
 | Time for new authors to find relevant guidance | TBD | < 5 minutes |
@@ -208,7 +216,7 @@ This document outlines the TypeSpec ecosystem's strategic direction for Summer 2
 **Metrics:**
 | Metric | Baseline | Target |
 |--------|----------|--------|
-| Specs migrated per bulk rollout (automated) | 0 | > 100 per migration |
+| Engineer-hours saved per bulk pattern rollout | 0 | > 200 hours per rollout |
 | Manual fixups required post-transformation | N/A | < 5% of transformed specs |
 | API contract preservation rate | N/A | 100% |
 | Time to roll out a pattern change across spec repo | Weeks (manual) | < 1 day |
@@ -239,8 +247,8 @@ This document outlines the TypeSpec ecosystem's strategic direction for Summer 2
 |--------|----------|--------|
 | Time to implement a new linting rule (end-to-end) | TBD | 60% reduction |
 | Time to scaffold a new library/emitter | TBD | 80% reduction |
-| AI-assisted PRs accepted without major revision | TBD | > 70% |
-| Token cost per AI-assisted contribution | TBD | Establish baseline, then 25% reduction |
+| Manual rework time per AI-assisted contribution | TBD | < 30 minutes per PR |
+| Total effort (human + AI) per contribution vs. fully manual | TBD | 60% reduction |
 | Human interaction rounds per AI-assisted PR | TBD | ≤ 3 rounds |
 
 ### Website-Integrated Documentation
@@ -273,9 +281,9 @@ This document outlines the TypeSpec ecosystem's strategic direction for Summer 2
 **Metrics:**
 | Metric | Baseline | Target |
 |--------|----------|--------|
-| AI PR acceptance rate | TBD | > 80% |
-| AI PR first-attempt success rate | TBD | > 60% |
-| Feedback loop time (data → skill improvement) | N/A | < 1 week |
+| Time from AI PR creation to mergeable state | TBD | < 1 hour |
+| Manual intervention time per AI-generated PR | TBD | < 15 minutes |
+| Time until users see fewer repeated AI failure modes | N/A | < 2 weeks |
 
 ---
 
@@ -297,9 +305,9 @@ This document outlines the TypeSpec ecosystem's strategic direction for Summer 2
 **Metrics:**
 | Metric | Baseline | Target |
 |--------|----------|--------|
-| Lines of JavaScript required for common library patterns | TBD | 50% reduction |
+| Time for library authors to implement common patterns | TBD | 50% reduction |
 | Time to implement a new library template | TBD | 40% reduction |
-| Number of patterns expressible in pure TypeSpec (vs. requiring JS) | TBD | 3× increase |
+| Share of common tasks completable without writing custom JavaScript | TBD | > 80% |
 
 ### Meta-Language Improvements
 
@@ -316,7 +324,7 @@ This document outlines the TypeSpec ecosystem's strategic direction for Summer 2
 **Metrics:**
 | Metric | Baseline | Target |
 |--------|----------|--------|
-| Boilerplate lines in library implementations | TBD | 40% reduction |
+| Time to implement or modify a library feature | TBD | 40% reduction |
 | Time for new contributor to implement first decorator | TBD | 60% reduction |
 | TypeKit API consistency (breaking edge cases) | TBD | 0 inconsistencies |
 
@@ -334,9 +342,9 @@ This document outlines the TypeSpec ecosystem's strategic direction for Summer 2
 **Metrics:**
 | Metric | Baseline | Target |
 |--------|----------|--------|
-| Reusable operations available in standard library | 0 | > 20 |
-| Template code duplication across libraries | TBD | 50% reduction |
-| JavaScript knowledge required (measured by JS LOC in libraries) | TBD | 40% reduction |
+| Time to compose a new API pattern from existing building blocks | N/A | < 30 minutes |
+| User-facing defects caused by inconsistent template behavior | TBD | 80% reduction |
+| Time for a new contributor to make a useful library change without JS expertise | TBD | < 2 hours |
 
 ### Complex Versioning Patterns
 
@@ -353,9 +361,9 @@ This document outlines the TypeSpec ecosystem's strategic direction for Summer 2
 **Metrics:**
 | Metric | Baseline | Target |
 |--------|----------|--------|
-| Versioning patterns expressible natively (vs. workarounds) | TBD | 100% of known patterns |
+| Time to model a complex versioning scenario | TBD | 60% reduction |
 | Versioning-related spec errors in CI | TBD | 70% reduction |
-| Lines of code for complex versioning scenarios | TBD | 50% reduction |
+| Time to author and review a complex versioning change | TBD | 50% reduction |
 
 ### Compiler and Infrastructure
 
@@ -370,8 +378,8 @@ This document outlines the TypeSpec ecosystem's strategic direction for Summer 2
 **Metrics:**
 | Metric | Baseline | Target |
 |--------|----------|--------|
-| Core compiler test coverage | TBD | > 90% |
-| Performance regression detection rate | TBD | 100% (caught in CI) |
+| Regression bugs that reach contributors or service teams | TBD | 0 per release |
+| Unexpected performance regressions experienced by users after upgrade | TBD | 0 per release |
 | Lint rule execution time (p95) | TBD | < 100ms per rule per spec |
 
 ---
@@ -395,10 +403,10 @@ This document outlines the TypeSpec ecosystem's strategic direction for Summer 2
 **Metrics:**
 | Metric | Baseline | Target |
 |--------|----------|--------|
-| Lines of TypeSpec per standard resource definition | TBD | 30% reduction |
-| Template nesting depth (average) | TBD | ≤ 2 levels |
+| Time to author a standard resource definition | TBD | 40% reduction |
+| Time for authors to understand or modify an existing resource spec | TBD | 50% reduction |
 | Time for new team to author first correct spec | TBD | 50% reduction |
-| Azure.Core public API surface size | TBD | 25% reduction (consolidation) |
+| Time for new teams to choose the correct Azure.Core abstraction | TBD | < 10 minutes |
 | Service team satisfaction (quarterly survey) | TBD | > 4/5 rating |
 
 ### Azure.ResourceManager Simplification
@@ -416,7 +424,7 @@ This document outlines the TypeSpec ecosystem's strategic direction for Summer 2
 **Metrics:**
 | Metric | Baseline | Target |
 |--------|----------|--------|
-| Lines per ARM resource definition (with CRUD) | TBD | 40% reduction |
+| Time to author a standard ARM resource with CRUD | TBD | 50% reduction |
 | Merge-patch related errors in review | TBD | 90% reduction |
 | Time to model a standard ARM resource | TBD | 50% reduction |
 | Service team satisfaction (quarterly survey) | TBD | > 4/5 rating |
@@ -434,7 +442,7 @@ This document outlines the TypeSpec ecosystem's strategic direction for Summer 2
 **Metrics:**
 | Metric | Baseline | Target |
 |--------|----------|--------|
-| % of existing specs migratable (automated) | N/A | > 80% |
+| Median migration effort saved per spec (automated vs. manual) | N/A | > 90% effort reduction |
 | Migration validation accuracy | N/A | 100% (no false positives) |
 | Time to migrate a spec (automated vs. manual) | Hours (manual) | < 5 minutes |
 
@@ -497,10 +505,10 @@ This document outlines the TypeSpec ecosystem's strategic direction for Summer 2
 **Metrics:**
 | Metric | Baseline | Target |
 |--------|----------|--------|
-| Test coverage (maintained minimum) | TBD | > 85% |
-| Bad patterns detected before merge | TBD | > 95% |
-| Documentation staleness (days since last sync) | TBD | < 7 days |
-| Quality issues caught proactively (vs. in review) | TBD | > 70% |
+| Regressions that escape to users after changes merge | TBD | 0 per release |
+| Author/reviewer time saved by catching issues early | TBD | > 1 hour per PR |
+| User-reported confusion caused by outdated documentation | TBD | 0 incidents per month |
+| Review cycles eliminated by proactive quality detection | TBD | 50% fewer review rounds |
 
 ### Spec Rollout Tools
 
@@ -515,7 +523,7 @@ This document outlines the TypeSpec ecosystem's strategic direction for Summer 2
 **Metrics:**
 | Metric | Baseline | Target |
 |--------|----------|--------|
-| Specs updated per rollout (automated) | 0 (manual) | > 100 |
+| Engineer-hours saved per spec repo rollout | 0 | > 100 hours per rollout |
 | Rollout-caused regressions | TBD | 0 |
 | Time for full spec repo rollout | Weeks | < 2 days |
 
@@ -532,8 +540,8 @@ This document outlines the TypeSpec ecosystem's strategic direction for Summer 2
 **Metrics:**
 | Metric | Baseline | Target |
 |--------|----------|--------|
-| Docs-to-spec drift detected and corrected automatically | TBD | > 90% |
-| Stale documentation pages | TBD | 0 (within 7-day SLA) |
+| User-facing doc inaccuracies reported after publication | TBD | < 1 per month |
+| Users who find docs accurate on first use (survey) | TBD | > 95% |
 
 ---
 
@@ -571,7 +579,7 @@ This document outlines the TypeSpec ecosystem's strategic direction for Summer 2
 **Metrics:**
 | Metric | Baseline | Target |
 |--------|----------|--------|
-| Test cases generated per spec (automated) | 0 | > 80% of operations covered |
+| Time to get a usable contract test suite for a new service | TBD | < 1 hour |
 | Time to create contract test suite | TBD | 90% reduction |
 | Spec conformance issues caught by generated tests | N/A | > 90% of deviations |
 
@@ -607,7 +615,7 @@ This document outlines the TypeSpec ecosystem's strategic direction for Summer 2
 **Metrics:**
 | Metric | Baseline | Target |
 |--------|----------|--------|
-| % of ARM specs transformable (automated) | TBD | > 70% |
+| Time saved per team migrating from ARM to RPaaS TypeSpec | TBD | > 1 week per migration |
 | Manual fixups required post-transformation | N/A | < 10% of specs |
 | Time to transform (automated vs. manual) | Weeks (manual) | < 1 hour |
 
@@ -630,9 +638,9 @@ This document outlines the TypeSpec ecosystem's strategic direction for Summer 2
 **Metrics:**
 | Metric | Baseline | Target |
 |--------|----------|--------|
-| % of public APIs with complete documentation | TBD | 100% |
-| Naming inconsistencies identified and resolved | TBD | 0 remaining |
-| Undocumented behavioral edge cases | TBD | 0 remaining |
+| Time for consumers to find correct API behavior without maintainer help | TBD | < 10 minutes |
+| User confusion or misuse caused by inconsistent naming | TBD | 0 reported incidents |
+| User-reported surprises caused by undocumented behavior | TBD | 0 per quarter |
 
 ### Cleanup and Deprecation
 
@@ -647,9 +655,9 @@ This document outlines the TypeSpec ecosystem's strategic direction for Summer 2
 **Metrics:**
 | Metric | Baseline | Target |
 |--------|----------|--------|
-| Deprecated APIs with migration guides | TBD | 100% |
-| Overlapping/duplicate API pairs | TBD | 0 |
-| Consumer migration completion rate (before removal) | N/A | > 95% |
+| Time for consumers to migrate off a deprecated API without help | TBD | < 1 hour |
+| Users choosing the wrong API due to confusing overlap | TBD | 0 reported incidents |
+| Migration effort required per consumer | N/A | < 2 hours |
 
 ### Completeness Assessment
 
@@ -668,9 +676,9 @@ This document outlines the TypeSpec ecosystem's strategic direction for Summer 2
 **Metrics:**
 | Metric | Baseline | Target |
 |--------|----------|--------|
-| Azure API patterns with native support | TBD | > 95% |
+| Service teams blocked by missing pattern support | TBD | 0 teams blocked |
 | Service team requests for missing patterns | TBD | < 5 open requests per package |
-| 1.0 criteria checklist completion | 0% | 100% |
+| User-reported blockers to confident 1.0 adoption | 0 | 0 remaining |
 
 ### Stability Guarantees
 
@@ -686,7 +694,7 @@ This document outlines the TypeSpec ecosystem's strategic direction for Summer 2
 | Metric | Baseline | Target |
 |--------|----------|--------|
 | Unintentional breaking changes shipped | TBD | 0 |
-| Compatibility test suite coverage | 0 | > 90% of public APIs |
+| Consumer breakages encountered when upgrading minor versions | TBD | 0 per release |
 | Time to assess breaking change impact | TBD | < 1 hour (automated) |
 
 ---
@@ -709,8 +717,8 @@ This document outlines the TypeSpec ecosystem's strategic direction for Summer 2
 | Metric | Baseline | Target |
 |--------|----------|--------|
 | ARM patterns requiring custom workarounds | TBD | < 5% |
-| Common-types coverage (% of standard models) | TBD | > 95% |
-| New ARM specs using native patterns (vs. custom) | TBD | > 90% |
+| Time saved by reusing standard models instead of redefining them | TBD | > 1 hour per resource |
+| Time to author a new ARM spec without custom workarounds | TBD | < 2 hours |
 
 ### Streaming Support
 
@@ -725,7 +733,7 @@ This document outlines the TypeSpec ecosystem's strategic direction for Summer 2
 **Metrics:**
 | Metric | Baseline | Target |
 |--------|----------|--------|
-| Streaming APIs modelable in TypeSpec | 0% | > 90% of known patterns |
+| Teams able to model streaming endpoints without custom extensions | 0% | > 90% |
 | Client code generation correctness (streaming) | N/A | > 95% |
 | Time to model a streaming endpoint (vs. manual) | TBD | Comparable to non-streaming |
 
@@ -743,9 +751,9 @@ This document outlines the TypeSpec ecosystem's strategic direction for Summer 2
 **Metrics:**
 | Metric | Baseline | Target |
 |--------|----------|--------|
-| AI service patterns with native TypeSpec support | TBD | > 80% |
-| AI service specs using TypeSpec (vs. hand-written OpenAPI) | TBD | > 70% |
-| Template reuse rate for AI service specs | N/A | > 60% |
+| AI service teams able to model their APIs without custom workarounds | TBD | > 80% |
+| Time for AI service teams to produce a correct first spec | TBD | < 4 hours |
+| Time saved per AI service spec by using built-in templates | N/A | > 3 hours |
 
 ### Additional Patterns
 
@@ -761,9 +769,9 @@ This document outlines the TypeSpec ecosystem's strategic direction for Summer 2
 **Metrics:**
 | Metric | Baseline | Target |
 |--------|----------|--------|
-| Event-driven patterns expressible natively | TBD | > 80% |
-| Batch/bulk patterns with template support | 0 | > 5 reusable templates |
-| Service teams using native patterns (vs. custom) | TBD | > 75% |
+| Teams able to model event-driven APIs without custom extensions | TBD | > 80% |
+| Time to model batch/bulk operations using standard patterns | TBD | < 1 hour |
+| Custom-extension effort eliminated by using native patterns | TBD | > 75% reduction |
 
 ---
 
