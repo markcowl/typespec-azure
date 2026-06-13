@@ -36,8 +36,7 @@ This document outlines the TypeSpec ecosystem's strategic direction for Summer 2
 | Number of PR round-trips caused by lint failures | TBD | 60% reduction |
 | CI lint check execution time | TBD | No regression vs. LintDiff |
 | False positive rate | TBD | < 5% |
-
-### TypeSpec Breaking Change Detection
+| Service team satisfaction (quarterly survey) | TBD | > 4/5 rating |
 
 - **Pri 0** — Replace the OpenAPI Breaking Change Tool with a TypeSpec-native equivalent
 - Detect breaking changes directly from TypeSpec source (not from generated OpenAPI)
@@ -56,6 +55,7 @@ This document outlines the TypeSpec ecosystem's strategic direction for Summer 2
 | False positive rate for breaking change detection | TBD | < 3% |
 | Missed breaking changes (false negatives) | TBD | 0 |
 | Time from push to breaking change notification | TBD | < 2 minutes |
+| Service team satisfaction (quarterly survey) | TBD | > 4/5 rating |
 
 ### TypeSpec Examples Tooling
 
@@ -79,8 +79,7 @@ This document outlines the TypeSpec ecosystem's strategic direction for Summer 2
 | Number of examples required per new API version | TBD | Reduce to changed-only (est. 60% reduction) |
 | Example validation accuracy (vs. spec) | TBD | 100% |
 | Example generation correctness (valid on first attempt) | TBD | > 95% |
-
-### TypeSpec Examples and Documentation
+| Service team satisfaction (quarterly survey) | TBD | > 4/5 rating |
 
 - **Pri 0** — Add TypeSpec equivalents to API documentation in the RPaaS wiki and ARM RPC
 - Ensure all API guidance references TypeSpec as the primary authoring format
@@ -138,8 +137,7 @@ This document outlines the TypeSpec ecosystem's strategic direction for Summer 2
 | Suggestion acceptance rate | TBD | > 40% |
 | Spec correctness on first CI run (AI-assisted) | TBD | > 80% |
 | Time to first successful PR for new TypeSpec authors | TBD | 50% reduction |
-
-### API Version Extraction Workflow
+| Service team satisfaction (quarterly survey) | TBD | > 4/5 rating |
 
 - **Pri 1** — Automated extraction of new API versions from existing specs
 - Support complex versioning patterns (additive, breaking, preview/GA transitions)
@@ -156,8 +154,7 @@ This document outlines the TypeSpec ecosystem's strategic direction for Summer 2
 | Time to create a new API version | TBD | 60% reduction |
 | Versioning errors caught in review | TBD | 80% reduction (caught by tool instead) |
 | Manual version decorator edits required | TBD | < 5 per version extraction |
-
-### Spec Validation and Simplification
+| Service team satisfaction (quarterly survey) | TBD | > 4/5 rating |
 
 - AI-driven tools to validate specs against Azure guidelines
 - Automated simplification of specs based on new patterns and templates
@@ -174,7 +171,29 @@ This document outlines the TypeSpec ecosystem's strategic direction for Summer 2
 | Specs successfully simplified (automated) | TBD | > 50% of eligible specs |
 | API contract preservation rate (after simplification) | TBD | 100% |
 
-### TypeSpec-to-TypeSpec Source Emitter
+### Best Practice Documentation and Samples
+
+- Improve and fill gaps in documentation and samples for common `typespec-azure-core` scenarios
+- Write templates and samples for common data plane API patterns that are Microsoft REST API Guideline compliant
+- Improve documentation for common `typespec-azure-resource-manager` patterns and scenarios
+- Ensure documentation quality is sufficient to improve AI tool performance when using docs as context
+
+**User Stories:**
+- *As a service team writing a data plane API*, I can find complete, working samples for common patterns (LRO, paging, error handling, auth) that are REST API Guideline compliant, so I don't reinvent them.
+- *As a service team writing an ARM resource*, I can find clear documentation for every common ARM pattern (CRUD, async operations, child resources, scoped resources) with copy-paste-ready templates.
+- *As an AI tool assisting spec authoring*, I can reference high-quality documentation and samples as context, producing more accurate suggestions with fewer hallucinations.
+- *As a new TypeSpec author*, I can learn by example from a comprehensive sample gallery organized by scenario rather than by API surface.
+
+**Metrics:**
+| Metric | Baseline | Target |
+|--------|----------|--------|
+| Documentation coverage for common azure-core patterns | TBD | 100% |
+| Documentation coverage for common ARM patterns | TBD | 100% |
+| AI tool accuracy when using docs as context | TBD | 30% improvement |
+| Service team satisfaction with documentation (survey) | TBD | > 4/5 rating |
+| Time for new authors to find relevant guidance | TBD | < 5 minutes |
+
+
 
 - A source-level emitter that can transform TypeSpec code in an API-neutral way
 - Rule-based transformations (e.g., apply new decorator patterns, migrate deprecated constructs)
@@ -380,8 +399,7 @@ This document outlines the TypeSpec ecosystem's strategic direction for Summer 2
 | Template nesting depth (average) | TBD | ≤ 2 levels |
 | Time for new team to author first correct spec | TBD | 50% reduction |
 | Azure.Core public API surface size | TBD | 25% reduction (consolidation) |
-
-### Azure.ResourceManager Simplification
+| Service team satisfaction (quarterly survey) | TBD | > 4/5 rating |
 
 - **Pri 0** — Merge Patch support in Azure libraries
 - Simplify ARM resource definitions using composable functions
@@ -399,8 +417,7 @@ This document outlines the TypeSpec ecosystem's strategic direction for Summer 2
 | Lines per ARM resource definition (with CRUD) | TBD | 40% reduction |
 | Merge-patch related errors in review | TBD | 90% reduction |
 | Time to model a standard ARM resource | TBD | 50% reduction |
-
-### Migration Tooling
+| Service team satisfaction (quarterly survey) | TBD | > 4/5 rating |
 
 - Automated migration of existing specs to simplified patterns
 - Backward-compatible changes with deprecation paths
@@ -576,8 +593,10 @@ This document outlines the TypeSpec ecosystem's strategic direction for Summer 2
 - **Pri 1** — Automated transformation of ARM specs to RPaaS TypeSpec
 - Handle complex resource hierarchies and cross-resource references
 - Validate transformed specs against RPaaS requirements
+- Generate stubs and tests for RPaaS UserRP extension APIs that implement services using the RPaaS front end
 
 **User Stories:**
+- *As a service team migrating to RPaaS*, I can use TypeSpec tooling to develop stubs and tests for RPaaS UserRP extension APIs that implement my service using the RPaaS front end.
 - *As a service team migrating to RPaaS*, I can automatically transform my existing ARM spec to RPaaS-compatible TypeSpec without manual rewriting.
 - *As a platform team*, I can batch-transform ARM specs to RPaaS TypeSpec and validate correctness automatically.
 
