@@ -401,6 +401,8 @@ This document outlines the TypeSpec ecosystem's strategic direction for Summer 2
 | Azure.Core public API surface size | TBD | 25% reduction (consolidation) |
 | Service team satisfaction (quarterly survey) | TBD | > 4/5 rating |
 
+### Azure.ResourceManager Simplification
+
 - **Pri 0** — Merge Patch support in Azure libraries
 - Simplify ARM resource definitions using composable functions
 - Reduce boilerplate for standard CRUD operations
@@ -418,6 +420,8 @@ This document outlines the TypeSpec ecosystem's strategic direction for Summer 2
 | Merge-patch related errors in review | TBD | 90% reduction |
 | Time to model a standard ARM resource | TBD | 50% reduction |
 | Service team satisfaction (quarterly survey) | TBD | > 4/5 rating |
+
+### Migration Tooling
 
 - Automated migration of existing specs to simplified patterns
 - Backward-compatible changes with deprecation paths
