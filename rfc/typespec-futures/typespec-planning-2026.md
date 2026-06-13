@@ -23,7 +23,6 @@ This document outlines the TypeSpec ecosystem's strategic direction for Summer 2
 - **Pri 0** — Normalize TypeSpec suppression mechanisms and replace LintDiff with a TypeSpec-native linting tool
 - Provide equivalent or better lint coverage compared to existing OpenAPI-based LintDiff
 - Support suppression comments, baseline files, and incremental linting for PR workflows
-- Owner: Will
 
 ### TypeSpec Breaking Change Detection
 
@@ -31,7 +30,6 @@ This document outlines the TypeSpec ecosystem's strategic direction for Summer 2
 - Detect breaking changes directly from TypeSpec source (not from generated OpenAPI)
 - Support versioning-aware diff that understands `@added`/`@removed` decorators
 - Integrate into CI pipelines as a required check
-- Owner: Mark
 
 ### TypeSpec Examples and Documentation
 
@@ -97,14 +95,12 @@ This document outlines the TypeSpec ecosystem's strategic direction for Summer 2
 - **Pri 0** — Website-integrated documentation chatbots
 - Interactive docs that can answer questions about TypeSpec APIs, decorators, and patterns
 - Context-aware help integrated into the authoring experience
-- Owner: Will
 
 ### Data Collection for AI PRs
 
 - **Pri 0** — Systematic data collection from AI-generated PRs
 - Track quality, acceptance rate, and iteration patterns
 - Use data to improve AI skill accuracy over time
-- Owner: Tim
 
 ---
 
@@ -117,7 +113,6 @@ This document outlines the TypeSpec ecosystem's strategic direction for Summer 2
 - **Pri 0** — First-class functions in TypeSpec
 - Enable composable logic within specs without requiring JavaScript decorator implementations
 - Support function composition for building up libraries from TypeSpec templates
-- Owner: Will
 
 ### Meta-Language Improvements
 
@@ -183,12 +178,10 @@ This document outlines the TypeSpec ecosystem's strategic direction for Summer 2
 - **Pri 0** — Automated issue triage for incoming bug reports and feature requests
 - Classify, label, assign, and prioritize issues
 - Detect duplicates and link related issues
-- Owner: Tim
 
 ### Release Management Agents
 
 - **Pri 0** — Release notes generation
-  - Owner: Will
 - **Pri 1** — Updating specs and SDK repos with new version releases
 - **Pri 1** — Creating hotfix releases
 - **Pri 1** — Versioning and changelog updates
@@ -311,18 +304,153 @@ This document outlines the TypeSpec ecosystem's strategic direction for Summer 2
 
 ---
 
-## Timeline Summary
+## 10. Success Metrics
 
-| Quarter | Key Milestones |
-|---------|---------------|
-| **Summer 2026** | TypeSpec CI tools replace LintDiff/Breaking Change (§1), Functions ship (§4), AI skill library v1 (§3), Issue triage agent live (§6) |
-| **Fall 2026** | Azure library simplification (§5), Service stub generation (§7), 1.0 audit complete (§8) |
-| **Winter 2026-27** | Streaming and AI patterns (§9), Full agent suite operational (§6), SDK team migration complete (§1) |
+Each workstream defines measurable outcomes to track progress and validate that our investments are delivering value.
+
+### Specs Repo CI Tools (§1)
+
+| Metric | Baseline | Target |
+|--------|----------|--------|
+| Time to completion for a specs PR (open → merge) | TBD | 30% reduction |
+| Time spent resolving breaking change errors | TBD | 50% reduction |
+| Time spent resolving LintDiff errors | TBD | 50% reduction |
+| Time spent resolving example errors | TBD | 50% reduction |
+| Time in review (reviewer turnaround) | TBD | 25% reduction |
+| CI check wall-clock time | TBD | No regression vs. OpenAPI tools |
+
+### TypeSpec & TypeSpec-Azure Tooling (§3, §6)
+
+| Metric | Baseline | Target |
+|--------|----------|--------|
+| Number of contributed PRs (AI-assisted) | TBD | 2× increase per quarter |
+| Time taken per PR (AI-assisted feature/fix) | TBD | 50% reduction |
+| Token cost per AI-assisted PR | TBD | Establish baseline, then 25% reduction |
+| Human interaction rounds required per PR | TBD | Reduce to ≤3 rounds for standard features |
+| New linting rules contributed (AI-assisted) | TBD | 2× increase per quarter |
+
+### TypeSpec Simplification (§4, §5)
+
+| Metric | Baseline | Target |
+|--------|----------|--------|
+| Time to author new TypeSpec APIs, TypeKits, functions, and template building blocks | TBD | 40% reduction |
+| Token cost for AI-assisted TypeSpec feature development | TBD | Establish baseline, then 30% reduction |
+| Human interaction rounds for new TypeSpec features | TBD | Reduce to ≤5 rounds for complex features |
+| Time to author new specs in azure-rest-api-specs (using simplified patterns) | TBD | 40% reduction |
+| Token cost for AI-assisted spec authoring | TBD | Establish baseline, then 30% reduction |
+| Human interaction rounds for spec authoring | TBD | Reduce to ≤3 rounds for standard resources |
+| Lines of TypeSpec per resource definition (boilerplate reduction) | TBD | 30% reduction |
+
+---
+
+## 11. End-to-End User Experience Vision
+
+When all workstreams deliver, the combined user experience transforms how teams interact with the Azure API ecosystem.
+
+### The Service Team Experience (When Complete)
+
+A service team starting a new API will:
+
+1. **Author** their spec in TypeSpec using AI-assisted tooling that suggests patterns, validates against Azure guidelines in real-time, and auto-completes complex ARM templates — all without leaving their editor.
+2. **Evolve** their API by adding versions with AI-assisted extraction, where the tool understands versioning semantics and generates the correct decorators and diff reports automatically.
+3. **Validate** through TypeSpec-native CI that runs in seconds (not minutes), gives clear actionable errors for breaking changes and lint violations, and provides one-click fixes for common issues.
+4. **Ship** with confidence because live service validation confirms their implementation matches the spec, and generated stubs/tests gave them a head start on implementation.
+
+### The TypeSpec Contributor Experience (When Complete)
+
+A developer extending TypeSpec will:
+
+1. **Scaffold** a new library, emitter, or linting rule using AI skills that generate working boilerplate with tests and documentation from a natural-language description.
+2. **Implement** using functions and composable templates that require minimal JavaScript knowledge, with AI assistance that understands TypeSpec internals.
+3. **Validate** through continuous quality agents that check code coverage, performance, documentation completeness, and pattern adherence automatically.
+4. **Release** through automated agents that handle versioning, changelogs, release notes, and downstream propagation.
+
+### The Platform Maintainer Experience (When Complete)
+
+The TypeSpec platform team will:
+
+1. **Triage** issues automatically, with agents classifying, deduplicating, and routing incoming reports.
+2. **Maintain** specs at scale through agentic tools that detect drift, suggest simplifications, and roll out pattern updates across thousands of specs.
+3. **Audit** API surfaces systematically, with tooling that identifies gaps, inconsistencies, and 1.0 readiness across all packages.
+
+---
+
+## 12. Quarterly Roadmap and Capabilities
+
+### Summer 2026 (July–September)
+
+**End-to-end capabilities delivered:**
+- Service teams can run TypeSpec-native linting and breaking change detection in CI (replacing LintDiff and OpenAPI breaking change tools)
+- Contributors can use a basic AI skill library for formatting, testing, examples, and documentation
+- Issue triage and release notes are automated
+- Functions are available in TypeSpec for library authors
+
+**Key deliverables:**
+- TypeSpec CI tools replace LintDiff/Breaking Change (§1)
+- Functions ship in TypeSpec core (§4)
+- AI skill library v1 (§3)
+- Issue triage agent live (§6)
+- Merge Patch in Azure libraries (§5)
+- Website documentation chatbots (§3)
+- Data collection pipeline for AI PRs (§3)
+
+**Metrics checkpoint:**
+- Establish baselines for all metrics above
+- CI tool parity confirmed (no regression in coverage)
+- Measure initial AI skill library usage and token costs
+
+### Fall 2026 (October–December)
+
+**End-to-end capabilities delivered:**
+- Service teams author specs using simplified Azure patterns (functions-based) with dramatically less boilerplate
+- AI-assisted version extraction workflows are operational
+- Continuous code quality agents are monitoring repos and flagging issues proactively
+- TypeSpec-to-TypeSpec source emitter enables bulk pattern migrations
+
+**Key deliverables:**
+- Azure library simplification using functions (§5)
+- API version extraction workflow (§2)
+- TypeSpec-to-TypeSpec source emitter (§2)
+- Composable operations and templates (§4)
+- Release management agents (§6)
+- 1.0 audit complete for core packages (§8)
+- Service stub generation v1 (§7)
+
+**Metrics checkpoint:**
+- 30% reduction in specs PR completion time
+- 50% reduction in time resolving CI errors
+- 2× increase in AI-assisted PRs to TypeSpec repos
+- Establish token cost baselines for all AI workflows
+
+### Winter 2026–27 (January–March)
+
+**End-to-end capabilities delivered:**
+- Full agentic maintenance suite operational across all repos
+- Streaming and AI/Foundry patterns available for service teams
+- SDK language teams fully migrated off OpenAPI 2.0
+- All core packages at 1.0 readiness with stability guarantees
+- Live service validation integrated into service team CI/CD
+
+**Key deliverables:**
+- Streaming and AI/Foundry patterns (§9)
+- Full agent suite operational (§6)
+- SDK team migration complete — CLI, PowerShell, Terraform on TypeSpec/OpenAPI3 (§1)
+- Complex versioning patterns (§4)
+- Live service validation (§7)
+- ARM to RPaaS transformation tool (§7)
+- New ARM patterns (§9)
+
+**Metrics checkpoint:**
+- All target metrics achieved or on-track
+- 40% reduction in time to author new TypeSpec features
+- 40% reduction in time to author new specs
+- ≤3 human interaction rounds for standard AI-assisted work
+- Token costs reduced 25-30% from baseline
 
 ---
 
 ## References
 
-- Prior planning: [TypeSpec Team Planning (Loop)](https://loop.cloud.microsoft/)
+- Prior planning: [TypeSpec Team Planning (Loop)](https://loop.cloud.microsoft/p/eyJ3Ijp7InUiOiJodHRwczovL21pY3Jvc29mdC5zaGFyZXBvaW50LmNvbS8_bmF2PWN6MGxNa1ltWkQxaUlXOXhaV2sxUTJSVGFqQlRRbWd4UW00dFVWQk9NbkZMTUZoV2NFOXBZVVpRYUhOblVGUm9SMUpPZEc4ME0yTXpVa3N4VFRsUmNEUlBWbkZtVlhkdlpXa21aajB3TVZWUlYwVlpVRTFHU0U5WFF6Uk1WMVphTlVGSlJWYzNURXRMVGtSUFRrOHlKbU05Sm1ac2RXbGtQVEUlM0QiLCJyIjpmYWxzZX0sInAiOnsidSI6Imh0dHBzOi8vbWljcm9zb2Z0LnNoYXJlcG9pbnQuY29tL3NpdGVzLzRiOGNkNTZiLTZkNDAtNGFiMy1iZWE1LTE3NDRkNGQ3M2NkZj9uYXY9Y3owbE1rWnphWFJsY3lVeVJqUmlPR05rTlRaaUxUWmtOREF0TkdGaU15MWlaV0UxTFRFM05EUmtOR1EzTTJOa1ppWmtQV0loYjNGbGFUVkRaRk5xTUZOQ2FERkNiaTFSVUU0eWNVc3dXRlp3VDJsaFJsQm9jMmRRVkdoSFVrNTBielF6WXpOU1N6Rk5PVkZ3TkU5V2NXWlZkMjlsYVNabVBUQXhWVkZYUlZsUVNqUTNTRGRYUWxoR1ZsbGFRVW8wU1ZvMldWbFVORnBVUlVJbVl6MGxNa1ltWm14MWFXUTlNU1poUFZSbFlXMXpKbkE5SlRRd1pteDFhV1I0SlRKR2JHOXZjQzF3WVdkbExXTnZiblJoYVc1bGNnJTNEJTNEIiwiciI6ZmFsc2V9LCJpIjp7ImkiOiJhZTBhYmU1Zi0yZDNiLTQwYjQtOWIwNS0yY2Q4MTMyNmI4MWMifX0)
 - Repository: [Azure/typespec-azure](https://github.com/Azure/typespec-azure)
 - TypeSpec core: [microsoft/typespec](https://github.com/microsoft/typespec)
