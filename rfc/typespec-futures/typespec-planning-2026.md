@@ -193,7 +193,7 @@ This document outlines the TypeSpec ecosystem's strategic direction for Summer 2
 | Service team satisfaction with documentation (survey) | TBD | > 4/5 rating |
 | Time for new authors to find relevant guidance | TBD | < 5 minutes |
 
-
+### TypeSpec-to-TypeSpec Source Emitter
 
 - A source-level emitter that can transform TypeSpec code in an API-neutral way
 - Rule-based transformations (e.g., apply new decorator patterns, migrate deprecated constructs)
