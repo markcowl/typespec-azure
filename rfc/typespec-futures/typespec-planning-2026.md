@@ -83,38 +83,22 @@ This document outlines the TypeSpec ecosystem's strategic direction for Summer 2
 | Example generation correctness (valid on first attempt) | TBD | > 95% |
 | Service team satisfaction (quarterly survey) | TBD | > 4/5 rating |
 
-### TypeSpec Examples and Documentation
-
-- **Pri 0** — Add TypeSpec equivalents to API documentation in the RPaaS wiki and ARM RPC
-- Ensure all API guidance references TypeSpec as the primary authoring format
-- Provide migration guides for teams still using OpenAPI 2.0 specs
-
-**User Stories:**
-- *As a new service team member*, I can find TypeSpec-first guidance in all official documentation, so I don't start with deprecated OpenAPI patterns.
-- *As a team migrating from OpenAPI*, I have clear step-by-step migration guides that map OpenAPI concepts to TypeSpec equivalents.
-
-**Metrics:**
-| Metric | Baseline | Target |
-|--------|----------|--------|
-| Time for service teams to find TypeSpec guidance for their scenario | TBD | < 5 minutes |
-| Time for RPaaS teams to find scenario-specific guidance without asking for help | TBD | < 5 minutes |
-| Time for migrating teams to produce first successful TypeSpec PR | TBD | < 1 day |
-
 ### SDK Language Team Migration
 
 - Drive CLI, PowerShell, and Terraform teams to consume TypeSpec or OpenAPI 3.0 instead of OpenAPI 2.0
-- Provide tooling and guidance for the transition
+- Provide guidance for the transition
 - Establish timelines for OpenAPI 2.0 deprecation in downstream pipelines
+- Provide guidance and tooling to help move checks for downstream teams into the CI pipeline
 
 **User Stories:**
+- *As a service team*, I know that all important artifacts for my service come from the same source of truth, and I can detect and fix any issues with downstream artifacts, like CLI, PowerShell, and Terraform commands at the time of check-in.
 - *As a CLI/PowerShell/Terraform SDK team*, I can consume TypeSpec or OpenAPI 3.0 output directly, without depending on OpenAPI 2.0 conversion.
-- *As a platform team*, I can set a deprecation date for OpenAPI 2.0 pipelines because all downstream consumers have migrated.
 
 **Metrics:**
 | Metric | Baseline | Target |
 |--------|----------|--------|
 | SDK team time spent on format-conversion workarounds | TBD | Eliminate entirely by Winter 2026-27 |
-| Pipeline failures or rework caused by OpenAPI 2.0 conversion | TBD | 0 by Winter 2026-27 |
+| Late failures discovered in SDK, CLI, and documentation artifacts | TBD | 80% reduction |
 | SDK generation errors caused by format conversion | TBD | Eliminate entirely |
 
 ---
@@ -145,7 +129,7 @@ This document outlines the TypeSpec ecosystem's strategic direction for Summer 2
 
 ### API Version Extraction Workflow
 
-- **Pri 1** — Automated extraction of new API versions from existing specs
+- **Pri 1** — Automated extraction of new API versions from existing specs to support spec migration from private to public repos, and extraction of public APIs from a spec which may include public and non-public APIs
 - Support complex versioning patterns (additive, breaking, preview/GA transitions)
 - Generate version diff reports for review
 
@@ -158,6 +142,7 @@ This document outlines the TypeSpec ecosystem's strategic direction for Summer 2
 | Metric | Baseline | Target |
 |--------|----------|--------|
 | Time to create a new API version | TBD | 60% reduction |
+| Time to migrate a spec from private to public repo | TBD | 70% reduction |
 | Versioning errors caught in review | TBD | 80% reduction (caught by tool instead) |
 | Manual version decorator edits required | TBD | < 5 per version extraction |
 | Service team satisfaction (quarterly survey) | TBD | > 4/5 rating |
@@ -181,12 +166,16 @@ This document outlines the TypeSpec ecosystem's strategic direction for Summer 2
 
 ### Best Practice Documentation and Samples
 
+- **Pri 0** — Add TypeSpec equivalents to API documentation in the RPaaS wiki and ARM RPC
+- Ensure all API guidance references TypeSpec as the primary authoring format
 - Improve and fill gaps in documentation and samples for common `typespec-azure-core` scenarios
 - Write templates and samples for common data plane API patterns that are Microsoft REST API Guideline compliant
 - Improve documentation for common `typespec-azure-resource-manager` patterns and scenarios
+- Ensure that operation templates provide adequate documentation about the details of the HTTP operations they create
 - Ensure documentation quality is sufficient to improve AI tool performance when using docs as context
 
 **User Stories:**
+- *As a new service team member*, I can find TypeSpec-first guidance in all official documentation, so I don't start with deprecated OpenAPI patterns.
 - *As a service team writing a data plane API*, I can find complete, working samples for common patterns (LRO, paging, error handling, auth) that are REST API Guideline compliant, so I don't reinvent them.
 - *As a service team writing an ARM resource*, I can find clear documentation for every common ARM pattern (CRUD, async operations, child resources, scoped resources) with copy-paste-ready templates.
 - *As an AI tool assisting spec authoring*, I can reference high-quality documentation and samples as context, producing more accurate suggestions with fewer hallucinations.
@@ -195,11 +184,11 @@ This document outlines the TypeSpec ecosystem's strategic direction for Summer 2
 **Metrics:**
 | Metric | Baseline | Target |
 |--------|----------|--------|
+| Time for service teams to find TypeSpec guidance for their scenario | TBD | < 5 minutes |
 | Time for authors to find azure-core guidance for a common scenario | TBD | < 5 minutes |
 | Time for authors to find ARM guidance for a common scenario | TBD | < 5 minutes |
 | AI tool accuracy when using docs as context | TBD | 30% improvement |
 | Service team satisfaction with documentation (survey) | TBD | > 4/5 rating |
-| Time for new authors to find relevant guidance | TBD | < 5 minutes |
 
 ### TypeSpec-to-TypeSpec Source Emitter
 
@@ -296,11 +285,19 @@ This document outlines the TypeSpec ecosystem's strategic direction for Summer 2
 - **Pri 0** — First-class functions in TypeSpec
 - Enable composable logic within specs without requiring JavaScript decorator implementations
 - Support function composition for building up libraries from TypeSpec templates
+- Enable building functions through composition
+- Add a core set of basic composable functions and templates that allow building complex library types
+- **Pri 1** — Composable transformation functions/templates
+- Allow function composition to provide basic, composable operations for building up libraries
+- Make libraries, functions, and templates easier to write and maintain
+- Reduce the JavaScript knowledge required for common library patterns
 
 **User Stories:**
 - *As a library author*, I can write reusable logic in TypeSpec itself (not JavaScript) that transforms types, validates patterns, or computes values.
 - *As a spec author*, I can compose functions to build complex types from simple building blocks without understanding the compiler internals.
 - *As a library author*, I can express template constraints and transformations declaratively in TypeSpec.
+- *As a library author*, I can compose small, reusable operations (e.g., "add pagination", "add error envelope", "add versioning") rather than writing monolithic templates.
+- *As a spec author*, I can mix and match library operations to build exactly the API pattern I need without forking templates.
 
 **Metrics:**
 | Metric | Baseline | Target |
@@ -308,6 +305,9 @@ This document outlines the TypeSpec ecosystem's strategic direction for Summer 2
 | Time for library authors to implement common patterns | TBD | 50% reduction |
 | Time to implement a new library template | TBD | 40% reduction |
 | Share of common tasks completable without writing custom JavaScript | TBD | > 80% |
+| Time to compose a new API pattern from existing building blocks | N/A | < 30 minutes |
+| User-facing defects caused by inconsistent template behavior | TBD | 80% reduction |
+| Time for a new contributor to make a useful library change without JS expertise | TBD | < 2 hours |
 
 ### Meta-Language Improvements
 
@@ -319,6 +319,7 @@ This document outlines the TypeSpec ecosystem's strategic direction for Summer 2
 **User Stories:**
 - *As a library author*, I can use string interpolation in templates to generate names, descriptions, and paths without awkward concatenation workarounds.
 - *As a library author*, I can use a normalized TypeKit API that provides consistent behavior across all type manipulation scenarios.
+- *As a library author*, I can use the TypeSpec meta-language to target any type in a TypeSpec spec.
 - *As a new contributor*, I can define simple decorators and functions declaratively without writing any JavaScript.
 
 **Metrics:**
@@ -327,24 +328,6 @@ This document outlines the TypeSpec ecosystem's strategic direction for Summer 2
 | Time to implement or modify a library feature | TBD | 40% reduction |
 | Time for new contributor to implement first decorator | TBD | 60% reduction |
 | TypeKit API consistency (breaking edge cases) | TBD | 0 inconsistencies |
-
-### Composable Operations and Templates
-
-- **Pri 1** — Composable transformation functions/templates
-- Allow function composition to provide basic, composable operations for building up libraries
-- Make libraries, functions, and templates easier to write and maintain
-- Reduce the JavaScript knowledge required for common library patterns
-
-**User Stories:**
-- *As a library author*, I can compose small, reusable operations (e.g., "add pagination", "add error envelope", "add versioning") rather than writing monolithic templates.
-- *As a spec author*, I can mix and match library operations to build exactly the API pattern I need without forking templates.
-
-**Metrics:**
-| Metric | Baseline | Target |
-|--------|----------|--------|
-| Time to compose a new API pattern from existing building blocks | N/A | < 30 minutes |
-| User-facing defects caused by inconsistent template behavior | TBD | 80% reduction |
-| Time for a new contributor to make a useful library change without JS expertise | TBD | < 2 hours |
 
 ### Complex Versioning Patterns
 
@@ -355,7 +338,7 @@ This document outlines the TypeSpec ecosystem's strategic direction for Summer 2
 
 **User Stories:**
 - *As a service team member*, I can express complex version evolution (e.g., "this parameter was optional in v1, required in v2, and removed in v3") cleanly in TypeSpec.
-- *As a library author*, I can version my template parameters so consumers know which version introduced a new option.
+- *As a library author*, I can version my template instantiations to easily reflect API evolution.
 - *As a spec author*, I can express "this feature is available in versions 2023-01-01 through 2024-06-01" with a single decorator.
 
 **Metrics:**
@@ -373,6 +356,7 @@ This document outlines the TypeSpec ecosystem's strategic direction for Summer 2
 
 **User Stories:**
 - *As a TypeSpec contributor*, I can run a performance benchmark before submitting a PR and know immediately if my change regresses performance.
+- *As a TypeSpec contributor*, I can add new language features to the compiler without fear of regressing current behavior.
 - *As a library author*, I have confidence that my linting rules meet performance standards and won't slow down CI for service teams.
 
 **Metrics:**
@@ -428,23 +412,6 @@ This document outlines the TypeSpec ecosystem's strategic direction for Summer 2
 | Merge-patch related errors in review | TBD | 90% reduction |
 | Time to model a standard ARM resource | TBD | 50% reduction |
 | Service team satisfaction (quarterly survey) | TBD | > 4/5 rating |
-
-### Migration Tooling
-
-- Automated migration of existing specs to simplified patterns
-- Backward-compatible changes with deprecation paths
-- Side-by-side comparison tooling for validating migrations
-
-**User Stories:**
-- *As a service team member*, I can run a migration tool that updates my spec to simplified patterns and shows me a before/after comparison proving API equivalence.
-- *As a platform team*, I can batch-migrate specs to new patterns with confidence that no API contracts are broken.
-
-**Metrics:**
-| Metric | Baseline | Target |
-|--------|----------|--------|
-| Median migration effort saved per spec (automated vs. manual) | N/A | > 90% effort reduction |
-| Migration validation accuracy | N/A | 100% (no false positives) |
-| Time to migrate a spec (automated vs. manual) | Hours (manual) | < 5 minutes |
 
 ---
 
