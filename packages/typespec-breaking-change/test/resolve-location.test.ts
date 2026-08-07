@@ -2,9 +2,12 @@ import { getSourceLocation } from "@typespec/compiler";
 import { describe, expect, it } from "vitest";
 import { computeDiffs } from "../src/diff/diff-engine.js";
 import { analyzeBaseAndHead, analyzeProgram } from "../src/pipeline/orchestrator.js";
-import { resolveFindingLocation as resolveResolvedFindingLocation } from "../src/pipeline/resolve-location.js";
-import type { Finding, VersionedView } from "../src/types.js";
+import {
+  resolveHeadSourceLocations,
+  resolveFindingLocation as resolveResolvedFindingLocation,
+} from "../src/pipeline/resolve-location.js";
 import { createVersionedView, enumerateVersions } from "../src/pipeline/versions.js";
+import type { Finding, VersionedView } from "../src/types.js";
 import { Tester, TesterWithSuppressions } from "./test-host.js";
 
 const resolveFindingLocation = (finding: Finding) =>
@@ -282,11 +285,19 @@ describe("resolveFindingLocation", () => {
     });
 
     it("reports direct sourceTraceLevel when headSourceLocation exists", () => {
-      const fakeLoc = { file: { path: "/user/direct.tsp", text: "model Foo {}\n" }, pos: 0, end: 5 };
+      const fakeLoc = {
+        file: { path: "/user/direct.tsp", text: "model Foo {}\n" },
+        pos: 0,
+        end: 5,
+      };
       const finding = makeFinding(
         {
           kind: "RequestPropertyAdded",
-          identity: { operation: { method: "GET", path: "/foo" }, component: "request", element: "body.x" },
+          identity: {
+            operation: { method: "GET", path: "/foo" },
+            component: "request",
+            element: "body.x",
+          },
           message: "test",
           headSourceLocation: fakeLoc,
         },
@@ -300,11 +311,19 @@ describe("resolveFindingLocation", () => {
     });
 
     it("reports origin sourceTraceLevel when only origin sourceLocation exists", () => {
-      const fakeLoc = { file: { path: "/user/origin.tsp", text: "model Foo { x: string; }\n" }, pos: 0, end: 5 };
+      const fakeLoc = {
+        file: { path: "/user/origin.tsp", text: "model Foo { x: string; }\n" },
+        pos: 0,
+        end: 5,
+      };
       const finding = makeFinding(
         {
           kind: "RequestPropertyAdded",
-          identity: { operation: { method: "GET", path: "/foo" }, component: "request", element: "body.x" },
+          identity: {
+            operation: { method: "GET", path: "/foo" },
+            component: "request",
+            element: "body.x",
+          },
           message: "test",
           origin: { declarationPath: "Foo.x", type: {} as any, sourceLocation: fakeLoc },
         },
@@ -318,11 +337,19 @@ describe("resolveFindingLocation", () => {
     });
 
     it("reports base sourceTraceLevel when only baseSourceLocation exists", () => {
-      const fakeLoc = { file: { path: "/user/base.tsp", text: "model Foo { x: string; }\n" }, pos: 0, end: 5 };
+      const fakeLoc = {
+        file: { path: "/user/base.tsp", text: "model Foo { x: string; }\n" },
+        pos: 0,
+        end: 5,
+      };
       const finding = makeFinding(
         {
           kind: "RequestPropertyRemoved",
-          identity: { operation: { method: "GET", path: "/foo" }, component: "request", element: "body.x" },
+          identity: {
+            operation: { method: "GET", path: "/foo" },
+            component: "request",
+            element: "body.x",
+          },
           message: "test",
           baseSourceLocation: fakeLoc,
         },
@@ -399,7 +426,11 @@ describe("resolveFindingLocation", () => {
       const finding = makeFinding(
         {
           kind: "RequestPropertyAdded",
-          identity: { operation: { method: "GET", path: "/widgets" }, component: "request", element: "body.name" },
+          identity: {
+            operation: { method: "GET", path: "/widgets" },
+            component: "request",
+            element: "body.name",
+          },
           message: "test",
           headType: { ...prop, node: undefined, model: widget } as any,
         },
@@ -414,11 +445,19 @@ describe("resolveFindingLocation", () => {
     });
 
     it("reports operation sourceTraceLevel when only operationSourceLocation exists", () => {
-      const fakeLoc = { file: { path: "/user/op.tsp", text: "op getFoo(): void;\n" }, pos: 0, end: 2 };
+      const fakeLoc = {
+        file: { path: "/user/op.tsp", text: "op getFoo(): void;\n" },
+        pos: 0,
+        end: 2,
+      };
       const finding = makeFinding(
         {
           kind: "OperationAdded",
-          identity: { operation: { method: "GET", path: "/foo" }, component: "request", element: "" },
+          identity: {
+            operation: { method: "GET", path: "/foo" },
+            component: "request",
+            element: "",
+          },
           message: "test",
           operationSourceLocation: fakeLoc,
         },
@@ -501,7 +540,11 @@ describe("resolveFindingLocation", () => {
       const finding = makeFinding(
         {
           kind: "RequestPropertyAdded",
-          identity: { operation: { method: "GET", path: "/foo" }, component: "request", element: "body.x" },
+          identity: {
+            operation: { method: "GET", path: "/foo" },
+            component: "request",
+            element: "body.x",
+          },
           message: "test",
           headSourceLocation: fakeLoc,
         },
@@ -516,7 +559,11 @@ describe("resolveFindingLocation", () => {
       const finding = makeFinding(
         {
           kind: "RequestPropertyRemoved",
-          identity: { operation: { method: "GET", path: "/foo" }, component: "request", element: "body.x" },
+          identity: {
+            operation: { method: "GET", path: "/foo" },
+            component: "request",
+            element: "body.x",
+          },
           message: "test",
           baseSourceLocation: fakeLoc,
         },
@@ -528,11 +575,19 @@ describe("resolveFindingLocation", () => {
 
     it("skips invalid origin location (empty path)", () => {
       const invalidLoc = { file: { path: "", text: "" }, pos: 0, end: 0 };
-      const validLoc = { file: { path: "/user/code.tsp", text: "op foo(): void;\n" }, pos: 0, end: 5 };
+      const validLoc = {
+        file: { path: "/user/code.tsp", text: "op foo(): void;\n" },
+        pos: 0,
+        end: 5,
+      };
       const finding = makeFinding(
         {
           kind: "RequestPropertyAdded",
-          identity: { operation: { method: "GET", path: "/foo" }, component: "request", element: "body.x" },
+          identity: {
+            operation: { method: "GET", path: "/foo" },
+            component: "request",
+            element: "body.x",
+          },
           message: "test",
           origin: { declarationPath: "Foo.x", type: {} as any, sourceLocation: invalidLoc },
           operationSourceLocation: validLoc,
@@ -545,11 +600,19 @@ describe("resolveFindingLocation", () => {
 
     it("skips <unknown location> origin path", () => {
       const unknownLoc = { file: { path: "<unknown location>", text: "" }, pos: 0, end: 0 };
-      const opLoc = { file: { path: "/user/op.tsp", text: "op create(): void;\n" }, pos: 0, end: 5 };
+      const opLoc = {
+        file: { path: "/user/op.tsp", text: "op create(): void;\n" },
+        pos: 0,
+        end: 5,
+      };
       const finding = makeFinding(
         {
           kind: "RequestPropertyAdded",
-          identity: { operation: { method: "POST", path: "/foo" }, component: "request", element: "body.x" },
+          identity: {
+            operation: { method: "POST", path: "/foo" },
+            component: "request",
+            element: "body.x",
+          },
           message: "test",
           origin: { declarationPath: "Foo.x", type: {} as any, sourceLocation: unknownLoc },
           operationSourceLocation: opLoc,
@@ -561,11 +624,19 @@ describe("resolveFindingLocation", () => {
     });
 
     it("uses operationSourceLocation as final fallback", () => {
-      const opLoc = { file: { path: "/user/ops.tsp", text: "op get(): Widget;\n" }, pos: 0, end: 5 };
+      const opLoc = {
+        file: { path: "/user/ops.tsp", text: "op get(): Widget;\n" },
+        pos: 0,
+        end: 5,
+      };
       const finding = makeFinding(
         {
           kind: "OperationAdded",
-          identity: { operation: { method: "GET", path: "/widgets" }, component: "request", element: "" },
+          identity: {
+            operation: { method: "GET", path: "/widgets" },
+            component: "request",
+            element: "",
+          },
           message: "test",
           operationSourceLocation: opLoc,
         },
@@ -575,17 +646,76 @@ describe("resolveFindingLocation", () => {
       expect(location).toEqual(opLoc);
     });
 
+    it("ignores invalid source locations without files", () => {
+      const finding = makeFinding(
+        {
+          kind: "RequestPropertyAdded",
+          identity: {
+            operation: { method: "POST", path: "/w" },
+            component: "request",
+            element: "body.x",
+          },
+          message: "test",
+          headSourceLocation: {} as any,
+        },
+        {} as any,
+      );
+
+      const location = resolveFindingLocation(finding);
+      expect(location).toBeUndefined();
+    });
+
+    it("swallows source-location lookup exceptions", () => {
+      const throwingType = {
+        kind: "Model",
+        name: "Broken",
+        namespace: undefined,
+        get node() {
+          throw new Error("boom");
+        },
+      } as any;
+
+      const finding = makeFinding(
+        {
+          kind: "RequestPropertyAdded",
+          identity: {
+            operation: { method: "POST", path: "/w" },
+            component: "request",
+            element: "body.x",
+          },
+          message: "test",
+          headType: throwingType,
+        },
+        {} as any,
+      );
+
+      const location = resolveFindingLocation(finding);
+      expect(location).toBeUndefined();
+    });
+
     it("falls back to type direct location when origin is invalid", () => {
       // Simulate a type that has a valid getSourceLocation but origin is invalid
       const invalidOriginLoc = { file: { path: "", text: "" }, pos: 0, end: 0 };
-      const typeLoc = { file: { path: "/user/model.tsp", text: "model Widget { x: int32; }\n" }, pos: 15, end: 20 };
+      const typeLoc = {
+        file: { path: "/user/model.tsp", text: "model Widget { x: int32; }\n" },
+        pos: 15,
+        end: 20,
+      };
       // Mock a type with node so getSourceLocation works via our test
       const finding = makeFinding(
         {
           kind: "RequestPropertyAdded",
-          identity: { operation: { method: "POST", path: "/w" }, component: "request", element: "body.x" },
+          identity: {
+            operation: { method: "POST", path: "/w" },
+            component: "request",
+            element: "body.x",
+          },
           message: "test",
-          origin: { declarationPath: "Widget.x", type: {} as any, sourceLocation: invalidOriginLoc },
+          origin: {
+            declarationPath: "Widget.x",
+            type: {} as any,
+            sourceLocation: invalidOriginLoc,
+          },
           headSourceLocation: typeLoc,
         },
         {} as any,
@@ -599,7 +729,11 @@ describe("resolveFindingLocation", () => {
       const finding = makeFinding(
         {
           kind: "RequestPropertyAdded",
-          identity: { operation: { method: "POST", path: "/w" }, component: "request", element: "body.x" },
+          identity: {
+            operation: { method: "POST", path: "/w" },
+            component: "request",
+            element: "body.x",
+          },
           message: "test",
           // headType is Intrinsic-like with no source location
           headType: { kind: "Intrinsic", name: "never" } as any,
@@ -613,14 +747,34 @@ describe("resolveFindingLocation", () => {
 
     it("falls back through model property sourceProperty chain", () => {
       // Simulate ModelProperty with sourceProperty chain ending at a model
-      const parentModel = { kind: "Model", name: "Base", node: { kind: 10, symbol: undefined, parent: undefined } } as any;
-      const chainEnd = { kind: "ModelProperty", name: "prop", model: parentModel, sourceProperty: undefined, node: { kind: 11, parent: { symbol: undefined }, symbol: undefined } } as any;
-      const headProp = { kind: "ModelProperty", name: "prop", model: undefined, sourceProperty: chainEnd, node: undefined } as any;
+      const parentModel = {
+        kind: "Model",
+        name: "Base",
+        node: { kind: 10, symbol: undefined, parent: undefined },
+      } as any;
+      const chainEnd = {
+        kind: "ModelProperty",
+        name: "prop",
+        model: parentModel,
+        sourceProperty: undefined,
+        node: { kind: 11, parent: { symbol: undefined }, symbol: undefined },
+      } as any;
+      const headProp = {
+        kind: "ModelProperty",
+        name: "prop",
+        model: undefined,
+        sourceProperty: chainEnd,
+        node: undefined,
+      } as any;
 
       const finding = makeFinding(
         {
           kind: "RequestPropertyAdded",
-          identity: { operation: { method: "POST", path: "/w" }, component: "request", element: "body.prop" },
+          identity: {
+            operation: { method: "POST", path: "/w" },
+            component: "request",
+            element: "body.prop",
+          },
           message: "test",
           headType: headProp,
         },
@@ -635,13 +789,26 @@ describe("resolveFindingLocation", () => {
     });
 
     it("exercises EnumMember fallback with mock type", () => {
-      const enumParent = { kind: "Enum", name: "Status", node: { kind: 15, symbol: undefined, parent: undefined } } as any;
-      const member = { kind: "EnumMember", name: "active", enum: enumParent, node: undefined } as any;
+      const enumParent = {
+        kind: "Enum",
+        name: "Status",
+        node: { kind: 15, symbol: undefined, parent: undefined },
+      } as any;
+      const member = {
+        kind: "EnumMember",
+        name: "active",
+        enum: enumParent,
+        node: undefined,
+      } as any;
 
       const finding = makeFinding(
         {
           kind: "ResponseEnumMemberAdded",
-          identity: { operation: { method: "GET", path: "/x" }, component: "response", element: "body.status" },
+          identity: {
+            operation: { method: "GET", path: "/x" },
+            component: "response",
+            element: "body.status",
+          },
           message: "test",
           headType: member,
         },
@@ -654,13 +821,26 @@ describe("resolveFindingLocation", () => {
     });
 
     it("exercises UnionVariant fallback with mock type", () => {
-      const unionParent = { kind: "Union", name: "Shape", node: { kind: 16, symbol: undefined, parent: undefined } } as any;
-      const variant = { kind: "UnionVariant", name: "circle", union: unionParent, node: undefined } as any;
+      const unionParent = {
+        kind: "Union",
+        name: "Shape",
+        node: { kind: 16, symbol: undefined, parent: undefined },
+      } as any;
+      const variant = {
+        kind: "UnionVariant",
+        name: "circle",
+        union: unionParent,
+        node: undefined,
+      } as any;
 
       const finding = makeFinding(
         {
           kind: "ResponseUnionVariantAdded",
-          identity: { operation: { method: "GET", path: "/x" }, component: "response", element: "body.shape" },
+          identity: {
+            operation: { method: "GET", path: "/x" },
+            component: "response",
+            element: "body.shape",
+          },
           message: "test",
           headType: variant,
         },
@@ -672,12 +852,21 @@ describe("resolveFindingLocation", () => {
     });
 
     it("exercises EnumMember without parent enum", () => {
-      const member = { kind: "EnumMember", name: "active", enum: undefined, node: undefined } as any;
+      const member = {
+        kind: "EnumMember",
+        name: "active",
+        enum: undefined,
+        node: undefined,
+      } as any;
 
       const finding = makeFinding(
         {
           kind: "ResponseEnumMemberAdded",
-          identity: { operation: { method: "GET", path: "/x" }, component: "response", element: "body.status" },
+          identity: {
+            operation: { method: "GET", path: "/x" },
+            component: "response",
+            element: "body.status",
+          },
           message: "test",
           headType: member,
         },
@@ -688,12 +877,21 @@ describe("resolveFindingLocation", () => {
     });
 
     it("exercises UnionVariant without parent union", () => {
-      const variant = { kind: "UnionVariant", name: "circle", union: undefined, node: undefined } as any;
+      const variant = {
+        kind: "UnionVariant",
+        name: "circle",
+        union: undefined,
+        node: undefined,
+      } as any;
 
       const finding = makeFinding(
         {
           kind: "ResponseUnionVariantAdded",
-          identity: { operation: { method: "GET", path: "/x" }, component: "response", element: "body.shape" },
+          identity: {
+            operation: { method: "GET", path: "/x" },
+            component: "response",
+            element: "body.shape",
+          },
           message: "test",
           headType: variant,
         },
@@ -706,12 +904,21 @@ describe("resolveFindingLocation", () => {
     it("exercises ModelProperty with no node (no synthetic location)", () => {
       // ModelProperty without node means getSourceLocation returns undefined
       const parentModel = { kind: "Model", name: "Widget", namespace: undefined } as any;
-      const prop = { kind: "ModelProperty", name: "x", model: parentModel, sourceProperty: undefined } as any;
+      const prop = {
+        kind: "ModelProperty",
+        name: "x",
+        model: parentModel,
+        sourceProperty: undefined,
+      } as any;
 
       const finding = makeFinding(
         {
           kind: "RequestPropertyAdded",
-          identity: { operation: { method: "POST", path: "/w" }, component: "request", element: "body.x" },
+          identity: {
+            operation: { method: "POST", path: "/w" },
+            component: "request",
+            element: "body.x",
+          },
           message: "test",
           headType: prop,
         },
@@ -1366,6 +1573,242 @@ describe("resolveFindingLocation", () => {
       expect(resolved?.sourceTraceLevel).toBe("namespace");
       expect(getLineAtLocation(resolved!.location)).toContain("namespace GadgetService");
     });
+
+    it("resolveHeadSourceLocations skips non-model-property base types", async () => {
+      const { program } = await Tester.compile(`
+        @versioned(Versions)
+        @service
+        namespace TestService;
+
+        enum Versions { v1: "2024-01-01", v2: "2025-01-01" }
+        model Widget { name: string; }
+        op getWidget(): Widget;
+      `);
+
+      const finding = makeFinding(
+        {
+          kind: "RequestTypeChanged",
+          identity: {
+            operation: { method: "GET", path: "/widgets" },
+            component: "request",
+            element: "body",
+          },
+          message: "test",
+          baseType: { kind: "Model", name: "Widget", namespace: undefined } as any,
+        },
+        createViewForService(program, "TestService", "2025-01-01"),
+      );
+
+      resolveHeadSourceLocations([finding], program);
+      expect(finding.diff.headSourceLocation).toBeUndefined();
+    });
+
+    it("resolveHeadSourceLocations uses origin paths to find nested models", async () => {
+      const { program: baseProgram } = await Tester.compile(`
+        @versioned(Versions)
+        @service
+        namespace Outer.Inner;
+
+        enum Versions { v1: "2024-01-01", v2: "2025-01-01" }
+        model Widget { city: string; }
+        op getWidget(): Widget;
+      `);
+
+      const { program: headProgram } = await Tester.compile(`
+        @versioned(Versions)
+        @service
+        namespace Outer.Inner;
+
+        enum Versions { v1: "2024-01-01", v2: "2025-01-01" }
+        model Widget { city: string; country?: string; }
+        op getWidget(): Widget;
+      `);
+
+      const [baseService] = enumerateVersions(baseProgram);
+      const baseView = createVersionedView(baseProgram, baseService.service, "2024-01-01");
+      const city = baseView.versionedNamespace.models.get("Widget")!.properties.get("city")!;
+
+      const finding = makeFinding(
+        {
+          kind: "ResponsePropertyRemoved",
+          identity: {
+            operation: { method: "GET", path: "/widgets" },
+            component: "response",
+            element: "body.properties.city",
+          },
+          message: "test",
+          baseType: city,
+          origin: {
+            declarationPath: "Outer.Inner.Widget.city",
+            type: city,
+            sourceLocation: getSourceLocation(city, { locateId: true })!,
+          },
+        },
+        baseView,
+      );
+
+      resolveHeadSourceLocations([finding], headProgram);
+      expect(finding.diff.headSourceTraceLevel).toBe("direct");
+      expect(getLineAtLocation(finding.diff.headSourceLocation!)).toContain("city");
+    });
+
+    it("resolveHeadSourceLocations falls back to recursive program lookup when service namespace is absent", async () => {
+      const { program: baseProgram } = await Tester.compile(`
+        @versioned(Versions)
+        @service
+        namespace Outer.Inner;
+
+        enum Versions { v1: "2024-01-01", v2: "2025-01-01" }
+        model Widget { city: string; }
+        op getWidget(): Widget;
+      `);
+
+      const { program: headProgram } = await Tester.compile(`
+        @versioned(Versions)
+        @service
+        namespace Outer.Inner;
+
+        enum Versions { v1: "2024-01-01", v2: "2025-01-01" }
+        model Widget { city: string; }
+        op getWidget(): Widget;
+      `);
+
+      const [baseService] = enumerateVersions(baseProgram);
+      const baseView = createVersionedView(baseProgram, baseService.service, "2024-01-01");
+      const city = baseView.versionedNamespace.models.get("Widget")!.properties.get("city")!;
+
+      const finding = {
+        ...makeFinding(
+          {
+            kind: "ResponsePropertyRemoved",
+            identity: {
+              operation: { method: "GET", path: "/widgets" },
+              component: "response",
+              element: "body.properties.city",
+            },
+            message: "test",
+            baseType: city,
+          },
+          baseView,
+        ),
+        serviceNamespace: undefined,
+      };
+
+      resolveHeadSourceLocations([finding], headProgram);
+      expect(finding.diff.headSourceTraceLevel).toBe("direct");
+      expect(getLineAtLocation(finding.diff.headSourceLocation!)).toContain("city");
+    });
+
+    it("resolveHeadSourceLocations falls back after malformed origin paths and missing service namespaces", async () => {
+      const { program: baseProgram } = await Tester.compile(`
+        @versioned(Versions)
+        @service
+        namespace TestService;
+
+        enum Versions { v1: "2024-01-01", v2: "2025-01-01" }
+        model Widget { city: string; }
+        op getWidget(): Widget;
+      `);
+
+      const { program: headProgram } = await Tester.compile(`
+        @versioned(Versions)
+        @service
+        namespace TestService;
+
+        enum Versions { v1: "2024-01-01", v2: "2025-01-01" }
+        model Widget { city: string; }
+        op getWidget(): Widget;
+      `);
+
+      const [baseService] = enumerateVersions(baseProgram);
+      const baseView = createVersionedView(baseProgram, baseService.service, "2024-01-01");
+      const city = baseView.versionedNamespace.models.get("Widget")!.properties.get("city")!;
+
+      const finding = {
+        ...makeFinding(
+          {
+            kind: "ResponsePropertyRemoved",
+            identity: {
+              operation: { method: "GET", path: "/widgets" },
+              component: "response",
+              element: "body.properties.city",
+            },
+            message: "test",
+            baseType: city,
+            origin: {
+              declarationPath: ".",
+              type: city,
+              sourceLocation: getSourceLocation(city, { locateId: true })!,
+            },
+          },
+          baseView,
+        ),
+        serviceNamespace: {
+          kind: "Namespace",
+          name: "MissingLeaf",
+          namespace: {
+            kind: "Namespace",
+            name: "MissingRoot",
+            namespace: undefined,
+          },
+        } as any,
+      };
+
+      resolveHeadSourceLocations([finding], headProgram);
+      expect(finding.diff.headSourceTraceLevel).toBe("direct");
+      expect(getLineAtLocation(finding.diff.headSourceLocation!)).toContain("city");
+    });
+
+    it("resolveHeadSourceLocations leaves findings unchanged when no head model can be found", async () => {
+      const { program: baseProgram } = await Tester.compile(`
+        @versioned(Versions)
+        @service
+        namespace TestService;
+
+        enum Versions { v1: "2024-01-01", v2: "2025-01-01" }
+        model Widget { city: string; }
+        op getWidget(): Widget;
+      `);
+
+      const { program: headProgram } = await Tester.compile(`
+        @versioned(Versions)
+        @service
+        namespace TestService;
+
+        enum Versions { v1: "2024-01-01", v2: "2025-01-01" }
+        model Gadget { id: string; }
+        op getGadget(): Gadget;
+      `);
+
+      const [baseService] = enumerateVersions(baseProgram);
+      const baseView = createVersionedView(baseProgram, baseService.service, "2024-01-01");
+      const city = baseView.versionedNamespace.models.get("Widget")!.properties.get("city")!;
+
+      const finding = {
+        ...makeFinding(
+          {
+            kind: "ResponsePropertyRemoved",
+            identity: {
+              operation: { method: "GET", path: "/widgets" },
+              component: "response",
+              element: "body.properties.city",
+            },
+            message: "test",
+            baseType: city,
+          },
+          baseView,
+        ),
+        serviceNamespace: {
+          kind: "Namespace",
+          name: "MissingService",
+          namespace: undefined,
+        } as any,
+      };
+
+      resolveHeadSourceLocations([finding], headProgram);
+      expect(finding.diff.headSourceLocation).toBeUndefined();
+      expect(finding.diff.headSourceTraceLevel).toBeUndefined();
+    });
   });
 });
 
@@ -1383,7 +1826,9 @@ function makeFinding(diff: any, view: VersionedView): Finding {
   };
 }
 
-async function compileViews(spec: string): Promise<{ baseView: VersionedView; headView: VersionedView }> {
+async function compileViews(
+  spec: string,
+): Promise<{ baseView: VersionedView; headView: VersionedView }> {
   const normalizedSpec = spec.replace(/^\s*using TypeSpec\.(Http|Versioning);\s*$/gm, "");
   const { program } = await Tester.compile(normalizedSpec);
   const [service] = enumerateVersions(program);
@@ -1414,5 +1859,7 @@ function createViewForService(program: any, serviceName: string, version: string
 function findOperationLocation(view: VersionedView, operationName: string) {
   const operation = view.versionedNamespace.operations.get(operationName);
   expect(operation).toBeDefined();
-  return operation ? getSourceLocation(operation, { locateId: true }) ?? getSourceLocation(operation) : undefined;
+  return operation
+    ? (getSourceLocation(operation, { locateId: true }) ?? getSourceLocation(operation))
+    : undefined;
 }
