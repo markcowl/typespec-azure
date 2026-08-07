@@ -1,9 +1,9 @@
 import { describe, it, expect } from "vitest";
 import { compile, NodeHost } from "@typespec/compiler";
 import type { Program } from "@typespec/compiler";
-import { analyzeProgram, analyzeBaseAndHead } from "../src/orchestrator.js";
-import { enumerateVersions, createVersionedView, buildPhaseBPairs } from "../src/versions.js";
-import { computeDiffs } from "../src/diff-engine.js";
+import { analyzeProgram, analyzeBaseAndHead } from "../src/pipeline/orchestrator.js";
+import { enumerateVersions, createVersionedView, buildPhaseBPairs } from "../src/pipeline/versions.js";
+import { computeDiffs } from "../src/diff/diff-engine.js";
 import { resolve } from "path";
 
 /**
@@ -172,7 +172,7 @@ describe("integration: large ARM spec (Network, 739 operations)", () => {
     });
   }, 120_000);
 
-  it("origin resolution achieves >50% coverage on large spec", async () => {
+  it("origin resolution achieves >90% coverage on large spec", async () => {
     const prog = await getProgram();
     const result = analyzeProgram(prog);
 
@@ -181,7 +181,7 @@ describe("integration: large ARM spec (Network, 739 operations)", () => {
     const pct = total > 0 ? (withOrigin / total) * 100 : 100;
 
     console.log(`  Origin coverage: ${withOrigin}/${total} (${Math.round(pct)}%)`);
-    expect(pct).toBeGreaterThanOrEqual(50);
+    expect(pct).toBeGreaterThanOrEqual(90);
   }, 120_000);
 
   it("deduplication reduces finding count", async () => {

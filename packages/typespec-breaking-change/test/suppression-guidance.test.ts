@@ -1,11 +1,12 @@
 import { describe, it, expect } from "vitest";
 import {
+  formatSuppressionDiff,
   formatSuppressionGuidance,
   formatSuppressionHint,
-} from "../src/suppression-guidance.js";
-import { formatJsonReport } from "../src/reporter-json.js";
-import { renderMarkdownSummary } from "../src/reporter-markdown.js";
-import { formatConsoleReport } from "../src/reporter-console.js";
+} from "../src/suppression/suppression-guidance.js";
+import { formatJsonReport } from "../src/reporting/reporter-json.js";
+import { renderMarkdownSummary } from "../src/reporting/reporter-markdown.js";
+import { formatConsoleReport } from "../src/reporting/reporter-console.js";
 import type { Finding, AnalysisResult } from "../src/types.js";
 
 function makeFinding(overrides: Partial<Finding> = {}): Finding {
@@ -171,6 +172,41 @@ describe("suppression guidance", () => {
       const guidance = formatSuppressionGuidance(finding);
       expect(guidance.example).toContain("model Widget");
       expect(guidance.example).not.toContain("model Models");
+    });
+
+    it("includes path when trace level points to a parent model fallback", () => {
+      const finding = makeFinding({
+        phase: "same-version",
+        diff: {
+          ...makeFinding().diff,
+          origin: {
+            declarationPath: "Microsoft.Widget.Models.WidgetProperties.city",
+            type: {} as any,
+            sourceLocation: {
+              file: {
+                path: "src/models.tsp",
+                text: "model WidgetProperties {\n  city: string;\n}\n",
+              },
+              pos: 25,
+              end: 29,
+            },
+          },
+          headSourceLocation: {
+            file: {
+              path: "src/models.tsp",
+              text: "model WidgetProperties {\n  name: string;\n}\n",
+            },
+            pos: 0,
+            end: 22,
+          },
+          headSourceTraceLevel: "parentModel",
+        },
+      });
+
+      const diffSnippet = formatSuppressionDiff(finding);
+
+      expect(diffSnippet).toContain('path: "city"');
+      expect(diffSnippet).toContain("@approvedUnversionedChange");
     });
   });
 });

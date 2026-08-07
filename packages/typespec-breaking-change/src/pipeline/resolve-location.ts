@@ -1,52 +1,80 @@
-import { getSourceLocation, type Model, type ModelProperty, type Namespace, type Program, type SourceLocation, type Type } from "@typespec/compiler";
-import type { Finding } from "./types.js";
+import {
+  getSourceLocation,
+  type Model,
+  type ModelProperty,
+  type Namespace,
+  type Program,
+  type SourceLocation,
+  type Type,
+} from "@typespec/compiler";
+import type { Finding, ResolvedLocation, SourceTraceLevel } from "../types.js";
 
 /**
  * Resolve the source location for a finding, using a cascading fallback chain
  * that guarantees a location is always returned when possible.
  *
  * Fallback chain (in priority order):
- * 1. Origin source location (most specific — points to named type/property declaration)
- * 2. Direct source location on the diff (headSourceLocation or baseSourceLocation)
- * 3. Parent model source location (when property type is Intrinsic or has no location)
- * 4. Operation declaration source location (always available for operation-relative diffs)
+ * 1. Direct source location on the diff (headSourceLocation)
+ * 2. Origin source location (named type/property declaration)
+ * 3. Base source location
+ * 4. Parent model/type fallback
+ * 5. Operation declaration source location
+ * 6. Service namespace source location + element path
  *
- * This function should never return undefined for operation-relative diffs.
+ * This function should never return undefined for operation-relative diffs
+ * when either the operation or service namespace source can be resolved.
  */
-export function resolveFindingLocation(finding: Finding): SourceLocation | undefined {
+export function resolveFindingLocation(finding: Finding): ResolvedLocation | undefined {
   const diff = finding.diff;
 
   // 1. Head source location (highest priority — set by resolveHeadSourceLocations
   // for cross-compilation findings, or by the diff engine for same-program findings)
   if (diff.headSourceLocation && isValidSourceLocation(diff.headSourceLocation)) {
-    return diff.headSourceLocation;
+    return resolvedLocation(diff.headSourceLocation, diff.headSourceTraceLevel ?? "direct");
   }
 
   // 2. Origin source location (property/type declaration in user code)
   if (diff.origin?.sourceLocation && isValidSourceLocation(diff.origin.sourceLocation)) {
-    return diff.origin.sourceLocation;
+    return resolvedLocation(diff.origin.sourceLocation, "origin");
   }
 
   // 3. Base source location fallback
   if (diff.baseSourceLocation && isValidSourceLocation(diff.baseSourceLocation)) {
-    return diff.baseSourceLocation;
+    return resolvedLocation(diff.baseSourceLocation, "base");
   }
 
   // 3. Parent model fallback — when type exists but has no useful location
   const type = diff.headType ?? diff.baseType;
   if (type) {
-    const modelLoc = resolveTypeLocationWithModelFallback(type);
-    if (modelLoc && isValidSourceLocation(modelLoc)) {
-      return modelLoc;
+    const resolvedTypeLoc = resolveTypeLocationWithModelFallback(type);
+    if (resolvedTypeLoc && isValidSourceLocation(resolvedTypeLoc.location)) {
+      return resolvedLocation(resolvedTypeLoc.location, resolvedTypeLoc.traceLevel);
     }
   }
 
-  // 4. Operation declaration source location (final fallback)
+  // 5. Operation declaration source location fallback
   if (diff.operationSourceLocation && isValidSourceLocation(diff.operationSourceLocation)) {
-    return diff.operationSourceLocation;
+    return resolvedLocation(diff.operationSourceLocation, "operation");
+  }
+
+  // 6. Service namespace fallback — include element path for disambiguation
+  const namespaceLoc = resolveNamespaceLocation(finding);
+  if (namespaceLoc && isValidSourceLocation(namespaceLoc)) {
+    return {
+      location: namespaceLoc,
+      sourceTraceLevel: "namespace",
+      elementPath: diff.identity.element,
+    };
   }
 
   return undefined;
+}
+
+function resolvedLocation(
+  location: SourceLocation,
+  sourceTraceLevel: SourceTraceLevel,
+): ResolvedLocation {
+  return { location, sourceTraceLevel };
 }
 
 /**
@@ -57,11 +85,13 @@ export function resolveFindingLocation(finding: Finding): SourceLocation | undef
  * - Property is on an anonymous model
  * - Type has a synthetic/unknown location
  */
-function resolveTypeLocationWithModelFallback(type: Type): SourceLocation | undefined {
+function resolveTypeLocationWithModelFallback(
+  type: Type,
+): { location: SourceLocation; traceLevel: Extract<SourceTraceLevel, "direct" | "origin" | "parentModel"> } | undefined {
   // Try direct location on the type
   const typeLoc = safeGetSourceLocation(type);
   if (typeLoc && isValidSourceLocation(typeLoc)) {
-    return typeLoc;
+    return { location: typeLoc, traceLevel: "direct" };
   }
 
   // For ModelProperty: try the parent model
@@ -75,14 +105,14 @@ function resolveTypeLocationWithModelFallback(type: Type): SourceLocation | unde
     }
     const chainLoc = safeGetSourceLocation(current);
     if (chainLoc && isValidSourceLocation(chainLoc)) {
-      return chainLoc;
+      return { location: chainLoc, traceLevel: "origin" };
     }
 
     // Fall back to parent model
     if (current.model) {
       const modelLoc = safeGetSourceLocation(current.model);
       if (modelLoc && isValidSourceLocation(modelLoc)) {
-        return modelLoc;
+        return { location: modelLoc, traceLevel: "parentModel" };
       }
     }
   }
@@ -91,7 +121,7 @@ function resolveTypeLocationWithModelFallback(type: Type): SourceLocation | unde
   if (type.kind === "EnumMember" && type.enum) {
     const enumLoc = safeGetSourceLocation(type.enum);
     if (enumLoc && isValidSourceLocation(enumLoc)) {
-      return enumLoc;
+      return { location: enumLoc, traceLevel: "parentModel" };
     }
   }
 
@@ -99,7 +129,7 @@ function resolveTypeLocationWithModelFallback(type: Type): SourceLocation | unde
   if (type.kind === "UnionVariant" && type.union) {
     const unionLoc = safeGetSourceLocation(type.union);
     if (unionLoc && isValidSourceLocation(unionLoc)) {
-      return unionLoc;
+      return { location: unionLoc, traceLevel: "parentModel" };
     }
   }
 
@@ -125,6 +155,14 @@ function safeGetSourceLocation(type: Type): SourceLocation | undefined {
   } catch {
     return undefined;
   }
+}
+
+function resolveNamespaceLocation(finding: Finding): SourceLocation | undefined {
+  if (!finding.serviceNamespace) {
+    return undefined;
+  }
+
+  return safeGetSourceLocation(finding.serviceNamespace);
 }
 
 /**
@@ -154,8 +192,10 @@ export function resolveHeadSourceLocations(findings: Finding[], headProgram: Pro
     const modelName = (prop.node as any)?.parent?.id?.sv ?? prop.model?.name;
     if (!modelName) continue;
 
-    // Look up the model by name in the head program's namespace tree
-    const headModel = findModelInProgram(headProgram, modelName);
+    const headModel =
+      findModelFromOrigin(headProgram, finding.diff.origin?.declarationPath) ??
+      findModelInServiceNamespace(headProgram, finding.serviceNamespace, modelName) ??
+      findModelInProgram(headProgram, modelName);
     if (!headModel) continue;
 
     // Check if the property exists on the head model
@@ -165,6 +205,7 @@ export function resolveHeadSourceLocations(findings: Finding[], headProgram: Pro
       const loc = safeGetSourceLocation(headProp);
       if (loc && isValidSourceLocation(loc)) {
         diff.headSourceLocation = loc;
+        diff.headSourceTraceLevel = "direct";
         continue;
       }
     }
@@ -173,8 +214,20 @@ export function resolveHeadSourceLocations(findings: Finding[], headProgram: Pro
     const modelLoc = safeGetSourceLocation(headModel);
     if (modelLoc && isValidSourceLocation(modelLoc)) {
       diff.headSourceLocation = modelLoc;
+      diff.headSourceTraceLevel = "parentModel";
     }
   }
+}
+
+function findModelFromOrigin(program: Program, declarationPath: string | undefined): Model | undefined {
+  if (!declarationPath) {
+    return undefined;
+  }
+
+  return (
+    findModelByQualifiedPath(program, declarationPath) ??
+    findModelByQualifiedPath(program, declarationPath.split(".").slice(0, -1).join("."))
+  );
 }
 
 /**
@@ -185,6 +238,72 @@ function findModelInProgram(program: Program, modelName: string): Model | undefi
   // Walk the global namespace and all sub-namespaces
   const globalNs = program.getGlobalNamespaceType();
   return findModelInNamespace(globalNs, modelName);
+}
+
+function findModelInServiceNamespace(
+  program: Program,
+  serviceNamespace: Namespace | undefined,
+  modelName: string,
+): Model | undefined {
+  if (!serviceNamespace) {
+    return undefined;
+  }
+
+  const headNamespace = findMatchingNamespace(program, serviceNamespace);
+  if (!headNamespace) {
+    return undefined;
+  }
+
+  return findModelInNamespace(headNamespace, modelName);
+}
+
+function findMatchingNamespace(program: Program, namespace: Namespace): Namespace | undefined {
+  const namespacePath = getNamespacePath(namespace);
+  let current: Namespace | undefined = program.getGlobalNamespaceType();
+
+  for (const segment of namespacePath) {
+    current = current?.namespaces.get(segment);
+    if (!current) {
+      return undefined;
+    }
+  }
+
+  return current;
+}
+
+function getNamespacePath(namespace: Namespace): string[] {
+  const path: string[] = [];
+  let current: Namespace | undefined = namespace;
+
+  while (current && current.name) {
+    path.unshift(current.name);
+    current = current.namespace;
+  }
+
+  return path;
+}
+
+function findModelByQualifiedPath(program: Program, qualifiedPath: string): Model | undefined {
+  if (!qualifiedPath) {
+    return undefined;
+  }
+
+  const parts = qualifiedPath.split(".").filter(Boolean);
+  if (parts.length === 0) {
+    return undefined;
+  }
+
+  const modelName = parts[parts.length - 1];
+  let current: Namespace | undefined = program.getGlobalNamespaceType();
+
+  for (const segment of parts.slice(0, -1)) {
+    current = current?.namespaces.get(segment);
+    if (!current) {
+      return undefined;
+    }
+  }
+
+  return current?.models.get(modelName);
 }
 
 function findModelInNamespace(ns: Namespace, modelName: string): Model | undefined {

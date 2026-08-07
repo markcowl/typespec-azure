@@ -111,6 +111,12 @@ export interface ApiDiff {
   /** Source location in the head compilation (for the affected declaration). */
   headSourceLocation?: SourceLocation;
 
+  /**
+   * How headSourceLocation was resolved when it was synthesized after diffing.
+   * Used to distinguish a direct property hit from a parent-model fallback.
+   */
+  headSourceTraceLevel?: Extract<SourceTraceLevel, "direct" | "parentModel">;
+
   /** Reference to the TypeSpec type in base (for suppression lookup, walking type chain). */
   baseType?: Type;
 
@@ -153,6 +159,20 @@ export interface OriginDeclaration {
   sourceLocation: SourceLocation;
 }
 
+export type SourceTraceLevel =
+  | "direct"
+  | "origin"
+  | "base"
+  | "parentModel"
+  | "operation"
+  | "namespace";
+
+export interface ResolvedLocation {
+  location: SourceLocation;
+  sourceTraceLevel: SourceTraceLevel;
+  elementPath?: string;
+}
+
 /**
  * Comparison phase context.
  */
@@ -179,6 +199,9 @@ export interface Finding {
 
   /** If suppressed, the reason provided in the suppression decorator. */
   suppressionReason?: string;
+
+  /** Source service namespace for namespace-level location fallback. */
+  serviceNamespace?: Namespace;
 
   /** Version pair that produced this finding. */
   versionPair: VersionPair;

@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { computeDiffs } from "../src/diff-engine.js";
-import { resolveOrigin } from "../src/origin.js";
-import { applySuppressions } from "../src/suppression.js";
-import { classifyDiffs } from "../src/policy.js";
+import { computeDiffs } from "../src/diff/diff-engine.js";
+import { resolveOrigin } from "../src/diff/origin.js";
+import { applySuppressions } from "../src/suppression/suppression.js";
+import { classifyDiffs } from "../src/pipeline/policy.js";
 import type { VersionedView } from "../src/types.js";
-import { createVersionedView, enumerateVersions } from "../src/versions.js";
+import { createVersionedView, enumerateVersions } from "../src/pipeline/versions.js";
 import { Tester, TesterWithSuppressions } from "./test-host.js";
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -136,6 +136,93 @@ describe("origin resolution (direct coverage)", () => {
     } as any;
 
     expect(resolveOrigin(extra)?.declarationPath).toBe("Outer.Inner.Widget.config");
+  });
+
+  it("traces template-instantiated properties through sourceModels metadata", async () => {
+    const widgetProperties = {
+      kind: "Model",
+      name: "WidgetProperties",
+      namespace: {
+        name: "TestService",
+        namespace: undefined,
+      },
+      properties: new Map(),
+      sourceModels: [],
+    } as any;
+
+    const legacy = {
+      kind: "ModelProperty",
+      name: "legacy",
+      model: widgetProperties,
+      sourceProperty: undefined,
+    } as any;
+    widgetProperties.properties.set("legacy", legacy);
+
+    const instantiatedModel = {
+      kind: "Model",
+      name: "TrackedResourceProperties",
+      namespace: widgetProperties.namespace,
+      properties: new Map(),
+      sourceModels: [{ model: widgetProperties }],
+    } as any;
+
+    const projectedLegacy = {
+      kind: "ModelProperty",
+      name: "legacy",
+      model: instantiatedModel,
+      sourceProperty: undefined,
+    } as any;
+
+    expect(resolveOrigin(projectedLegacy)?.declarationPath).toBe("TestService.WidgetProperties.legacy");
+  });
+
+  it("traces nested template-instantiated properties through templateMapper args", async () => {
+    const widgetProperties = {
+      kind: "Model",
+      name: "WidgetProperties",
+      namespace: {
+        name: "TestService",
+        namespace: undefined,
+      },
+      properties: new Map(),
+      sourceModels: [],
+    } as any;
+
+    const legacy = {
+      kind: "ModelProperty",
+      name: "legacy",
+      model: widgetProperties,
+      sourceProperty: undefined,
+    } as any;
+    widgetProperties.properties.set("legacy", legacy);
+
+    const resourceProperties = {
+      kind: "Model",
+      name: "ResourceProperties",
+      namespace: widgetProperties.namespace,
+      properties: new Map(),
+      sourceModels: [],
+      templateMapper: {
+        args: [widgetProperties],
+      },
+    } as any;
+
+    const trackedResource = {
+      kind: "Model",
+      name: "TrackedResource",
+      namespace: widgetProperties.namespace,
+      properties: new Map(),
+      sourceModels: [{ model: resourceProperties }],
+    } as any;
+
+    const projectedLegacy = {
+      kind: "ModelProperty",
+      name: "legacy",
+      model: trackedResource,
+      sourceProperty: undefined,
+    } as any;
+
+    expect(resolveOrigin(projectedLegacy)?.declarationPath).toBe("TestService.WidgetProperties.legacy");
   });
 });
 
