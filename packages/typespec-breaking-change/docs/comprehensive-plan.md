@@ -40,6 +40,7 @@ These are answered by design documents, prototype evidence, or both. Items marke
 
 **Answer:** Request/Response diffs merge into Resource findings post-comparison. Pipeline: dedup → merge → collapse → suppress.
 **Evidence:** Scenarios 10-12 in orchestrator tests, all 4 demo PRs.
+**Update (fleet/improvements):** Fixed bug where `ResourcePropertyMadeOptional` inherited request-side `ignore` severity. Added 9 resource merge + suppression scenario tests covering all diff kinds. `validDiffKinds` now includes all `Resource*` kinds so suppressions match correctly.
 
 ### A5. Cross-Compilation Suppression Identity ✅
 
@@ -274,14 +275,26 @@ Implement resolved designs and validate known gaps.
 | 1.7 | Phase A optimization validation tests | §8.5 (A6) | 0.5 day |
 | 1.8 | Phase A with real base/head programs (beyond demo PRs) | — | 1 day |
 
-### Phase 2: Debuggability and Logging (1 week)
+### Phase 2: Reporting Improvements and Logging (1 week)
 
 | # | Item | Design Ref | Effort |
 |---|------|-----------|--------|
-| 2.1 | Structured debug logging (analysis decisions, skipped items) | A11 | 2 days |
-| 2.2 | Split log levels: standard (CI output) vs debug (diagnostics) | — | 1 day |
-| 2.3 | Verbose mode showing all findings including "ignore" | A11 | 1 day |
-| 2.4 | Integration with GitHub Actions debug logging | — | 0.5 day |
+| 2.1 | Progress logging via `options.log` callback (visible in CI logs) | Reporting plan | 0.5 day |
+| 2.2 | Phase-aware zero-findings messages (console, markdown, JSON) | Reporting plan | 0.5 day |
+| 2.3 | Version comparison summary in all reporters (`VersionComparisonSummary`) | Reporting plan | 1 day |
+| 2.4 | Collapsed version comparisons section in markdown output | Reporting plan | 0.5 day |
+| 2.5 | Structured debug logging (analysis decisions, skipped items) | A11 | 2 days |
+| 2.6 | Split log levels: standard (CI output) vs debug (diagnostics) | — | 1 day |
+| 2.7 | Verbose mode showing all findings including "ignore" | A11 | 1 day |
+| 2.8 | Integration with GitHub Actions debug logging | — | 0.5 day |
+
+Detailed reporting improvements plan is in session artifact `reporting-improvements-plan.md`. Key changes:
+- `AnalysisOptions.log` callback for progress lines in CI
+- `AnalysisSummary.versionComparisons` array with per-pair breakdown
+- `AnalysisSummary.phase` for phase-aware reporter messages
+- Console: `✅ No cross-version breaking changes found (N version pairs compared)`
+- Markdown: collapsed `<details>` section with version comparison table
+- JSON: `versionComparisons` array in output
 
 ### Phase 3: Test Coverage Push (1-2 weeks)
 
@@ -304,11 +317,13 @@ See `typespec-breaking-change-test-coverage.md` for detailed scenario list.
 
 | # | Item | Relates To | Effort |
 |---|------|-----------|--------|
-| ~~4.1~~ | ~~Output format documentation (JSON schema, Markdown spec)~~ | ~~B4~~ | ✅ Done |
-| 4.2 | Code documentation (TSDoc for all public APIs) | — | 2 days |
-| 4.3 | CI integration guide (for specs repo team) | B4 | 1 day |
-| 4.4 | Decorator hosting evaluation memo | B1 | 1 day |
-| 4.5 | API upstream evaluation memo (what belongs in core) | B7 | 1 day |
+| ~~4.1~~ | ~~Output format documentation (JSON schema, Markdown spec)~~ | ~~B4~~ | ✅ Done (`docs/output-formats.md`) |
+| ~~4.2~~ | ~~Implementation developer guide~~ | ~~—~~ | ✅ Done (`docs/prototype-dev-guide.md`, `docs/implementation-guide.md`) |
+| ~~4.3~~ | ~~Source tracing deep-dive documentation~~ | ~~B2~~ | ✅ Done (`docs/source-tracing-deep-dive.md`, `docs/source-tracing-evaluation.md`) |
+| 4.4 | Code documentation (TSDoc for all public APIs) | — | 2 days |
+| 4.5 | CI integration guide (for specs repo team) | B4 | 1 day |
+| 4.6 | Decorator hosting evaluation memo | B1 | 1 day |
+| 4.7 | API upstream evaluation memo (what belongs in core) | B7 | 1 day |
 
 ### Phase 5: Production Hardening (2 weeks)
 
@@ -403,6 +418,41 @@ See `typespec-breaking-change-validation-strategy.md` for full details.
 | Design overview §6.3 | New/existing suppression comparison | A9 (resolved), Phase 1.1 |
 | Design overview §6.5 | Stale approval detection | A12 (resolved), Phase 5.5 |
 | Design overview §6.6 | Version scoping with `since:` | A10 (resolved), Phase 5.6 |
+| Session `reporting-improvements-plan.md` | Progress logging, phase-aware messages, version comparisons | Phase 2.1-2.4 |
+
+---
+
+## Appendix: Change Log
+
+### 2026-08-07 — PR `fleet/improvements` (PR #4)
+
+**Work completed in this PR:**
+
+| Category | Item | Commit |
+|----------|------|--------|
+| **Source tracing** | 6-level fallback chain with scoped namespace lookup | `56d7b4ff`, `6114e52a`, `5a2fe608` |
+| **Source tracing** | Template type parameter tracing via `sourceModels`/`templateMapper.args` | `a0bab899` |
+| **Source tracing** | Real-spec evaluation: Network 92%, Fleet 88.6%, AppConfig 100% | `0aa75bbd` |
+| **Bug fix** | Resource merge suppression kinds (`ResourcePropertyMadeOptional` severity, `validDiffKinds`) | `014d3b9d` |
+| **Tests** | 9 Resource merge + suppression scenario tests across all diff kinds | `014d3b9d` |
+| **Tests** | Priority 4 resource merge edge case tests | `f6e63eea` |
+| **Refactor** | Reorganize src/ into `cli/`, `diff/`, `pipeline/`, `suppression/`, `reporting/` | `bc07b6b4` |
+| **Docs** | Output format documentation (`docs/output-formats.md`) | `65772c58` |
+| **Docs** | Implementation developer guide (`docs/prototype-dev-guide.md`) | `acc05c2b` |
+| **Docs** | Source tracing deep-dive and evaluation docs | `135e3a8c`, `0aa75bbd` |
+| **Docs** | Updated design overview §8.2 with template tracing | `135e3a8c` |
+| **Docs** | GitHub Actions integration inventory in dev guide | `864bd981` |
+| **Docs** | Updated comprehensive plan and validation strategy | `864bd981` |
+
+**Test count:** 364 → 400 (36 new tests)
+
+**Comprehensive plan items completed:**
+- B2 (source tracing) → Resolved & Implemented
+- B4 (output format docs) → Resolved & Implemented
+- B5 (template tracing) → Resolved & Implemented
+- Phase 1.2, 1.3 → Done
+- Phase 3.3, 3.4, 3.9 → Done
+- Phase 4.1, 4.2, 4.3 → Done
 | Design overview §5 | Narrowing/widening classification | A11 (resolved), Phase 1.5 |
 | Design overview §6.2 | Removed operation suppression | A13 (resolved), Phase 1.4 |
 | Design overview §7.2 | Scalar transition table scope | B10 (open) |
