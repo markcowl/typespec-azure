@@ -41,7 +41,81 @@ When changing decorator option models in `.tsp` files, regenerate TypeScript typ
 | `source-link-principle-pre` | typespec-azure | Before source link resolution changes |
 | `demo-source-link-fix-pre` | azure-rest-api-specs | Before source link fix deployment |
 
-## 3. Deployment to azure-rest-api-specs
+## 3. GitHub Actions Integration (azure-rest-api-specs)
+
+The tool runs via four workflow files and one deployed tool directory. All paths are relative to the `azure-rest-api-specs` repo root.
+
+### Workflow Files
+
+| File | Purpose | Trigger |
+|------|---------|---------|
+| `.github/workflows/typespec-breaking-change-code.yaml` | **Phase B analysis** (cross-version). Runs CLI with `--phase cross-version` on each impacted TypeSpec folder. Posts PR comment, uploads report artifact, sets `BreakingChangeReviewRequired` label. | `pull_request` (opened/synchronize/reopened/edited/labeled/unlabeled) |
+| `.github/workflows/typespec-breaking-change-status.yaml` | Sets commit status for Phase B. Monitors the code workflow via `_reusable-set-check-status.yaml`. Override labels: `BreakingChange-Approved-*`. | `pull_request_target`, `workflow_run` |
+| `.github/workflows/typespec-versioning-change-code.yaml` | **Phase A analysis** (same-version). Checks out base revision in-place, runs CLI with `--phase same-version --base <base_folder>`. Posts PR comment, sets `VersioningReviewRequired` label. | `pull_request` (opened/synchronize/reopened/edited/labeled/unlabeled) |
+| `.github/workflows/typespec-versioning-change-status.yaml` | Sets commit status for Phase A. Override labels: `Versioning-Approved-*`. | `pull_request_target`, `workflow_run` |
+
+### Deployed Tool Directory
+
+```
+eng/tools/typespec-breaking-change/
+├── package.json          # Deployment package.json (pinned deps, no workspace refs)
+├── lib/
+│   ├── main.tsp          # TypeSpec library entry point
+│   └── decorators.tsp    # Suppression decorator declarations
+└── src/
+    ├── index.js           # Package entry point
+    ├── types.js           # Type definitions
+    ├── diff-kind.js       # DiffKind enum
+    ├── lib.js             # TypeSpec library registration
+    ├── tsp-index.js       # TypeSpec decorator implementations
+    ├── cli/
+    │   └── cli.js         # CLI entry point (invoked by workflows)
+    ├── diff/
+    │   ├── differ.js      # Diff engine
+    │   ├── origin.js      # Origin/source model resolution
+    │   └── ...
+    ├── pipeline/
+    │   ├── orchestrator.js # Analysis pipeline (Phase A + B)
+    │   ├── resolve-location.js # Source link resolution
+    │   └── ...
+    ├── suppression/
+    │   └── suppression.js # Suppression matching
+    └── reporting/
+        └── reporter.js    # Markdown/JSON output formatting
+```
+
+### Key Shared Dependencies
+
+| File | Used By |
+|------|---------|
+| `.github/actions/setup-node-install-deps` | Both code workflows (installs Node, runs npm install) |
+| `.github/workflows/_reusable-set-check-status.yaml` | Both status workflows |
+| `eng/scripts/Get-TypeSpec-Folders.ps1` | Both code workflows (finds impacted TypeSpec folders) |
+
+### CLI Invocation
+
+Both workflows invoke the CLI as:
+```bash
+node eng/tools/typespec-breaking-change/src/cli/cli.js "$folder" \
+  [--base "$base_folder"] \
+  --phase {cross-version|same-version} \
+  [--report-title "..."] \
+  --json-output "$folder_json" \
+  --markdown-output "$folder_md" \
+  [--github-annotations] \
+  --fail-on-breaking
+```
+
+Phase B (`typespec-breaking-change-code.yaml`) compiles head only and compares consecutive versions within it. Phase A (`typespec-versioning-change-code.yaml`) checks out the base revision to a separate directory and compares base vs head programs.
+
+### Updating the Tool
+
+See Section 4 below for the deployment runbook. Critical reminders:
+- Use `git add -f` (`.gitignore` excludes `.js` files)
+- Update **both** workflow files if the CLI entry point path changes
+- After pushing to main, rebase all PR branches and force-push
+
+## 4. Deployment to azure-rest-api-specs
 
 The tool's built JS is deployed to the specs fork for demo PRs. **This is a manual process:**
 
@@ -61,9 +135,9 @@ cp -r dist/src/* /path/to/azure-rest-api-specs/eng/tools/typespec-breaking-chang
 cp lib/decorators.tsp /path/to/azure-rest-api-specs/eng/tools/typespec-breaking-change/lib/
 cp package.json /path/to/azure-rest-api-specs/eng/tools/typespec-breaking-change/
 
-# 4. Commit to main in the specs fork
+# 4. Commit to main in the specs fork (use -f because .gitignore excludes .js)
 cd /path/to/azure-rest-api-specs
-git add eng/tools/typespec-breaking-change/
+git add -f eng/tools/typespec-breaking-change/
 git commit -m "chore: update breaking change tool JS"
 
 # 5. Rebase all PR branches onto main (so JS changes don't appear in PR diffs)
@@ -91,8 +165,10 @@ gh pr diff 5 --repo markcowl/azure-rest-api-specs --name-only
 - **Pushing to wrong branch names** — e.g., `pr4` instead of `versioning-test-unsup`. Always use the actual PR branch names.
 - **Forgetting to rebase** — If you commit JS to main but don't rebase PR branches, the PR diffs will show all the JS changes.
 - **Local vs GitHub diff mismatch** — After force-pushing, always verify on GitHub with `gh pr diff`. Local `git diff` uses a different merge-base.
+- **`.gitignore` blocking `git add`** — The specs repo's `.gitignore` excludes `.js` and `.js.map` files. You must use `git add -f` (force) to stage compiled JS files. Without `-f`, `git add` silently ignores them with no error.
+- **Sparse checkout preventing subdirectory commits** — If the specs repo uses sparse checkout, ensure the tool directory is in the sparse-checkout cone (`git sparse-checkout add eng/tools/typespec-breaking-change`) before adding files. Files outside the cone are silently skipped by `git add`.
 
-## 4. Demo PRs (markcowl/azure-rest-api-specs)
+## 5. Demo PRs (markcowl/azure-rest-api-specs)
 
 | PR | Branch | Scenario | Expected Result |
 |----|--------|----------|-----------------|
@@ -115,7 +191,7 @@ node dist/src/cli/cli.js \
   --format console
 ```
 
-## 5. Pitfalls and Hard-Won Knowledge
+## 6. Pitfalls and Hard-Won Knowledge
 
 ### TypeSpec Library Registration
 
@@ -162,7 +238,7 @@ TypeSpec state maps use **object identity**. Types from different compilations (
 
 Link to the type in HEAD **only when it exists in HEAD source** (the unmutated program). The comparison phase is NOT the right signal — `@added(v2)` creates a Phase A removal where the property EXISTS in head source but is projected out of an older version.
 
-## 6. Environment Notes
+## 7. Environment Notes
 
 When working on a shared machine:
 
@@ -170,7 +246,7 @@ When working on a shared machine:
 - Use `C:\Users\markcowl\azure-rest-api-specs` for specs repo changes.
 - `C:\Users\markcowl\typespec-azure` is the primary source repo.
 
-## 7. Remaining Work
+## 8. Remaining Work
 
 See `rfcs/breaking-changes/typespec-breaking-change-test-coverage.md` for the detailed test plan.
 
