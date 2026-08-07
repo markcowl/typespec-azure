@@ -11,10 +11,10 @@ import type {
   OperationHttpCanonicalization,
 } from "@typespec/http-canonicalization";
 import type { DiffKind } from "../diff-kind.js";
+import type { ApiDiff, DiffComponent, OperationDiffIdentity, OperationIdentity } from "../types.js";
 import type { DiffContext } from "./diff-types.js";
 import { compareTypes } from "./diff-types.js";
 import { resolveOrigin } from "./origin.js";
-import type { ApiDiff, DiffComponent, OperationDiffIdentity, OperationIdentity } from "../types.js";
 
 /**
  * Compare two canonicalized operations and return all structural diffs.
@@ -217,7 +217,7 @@ function diffParameterGroup(
           "request",
           elementPath,
           `Request parameter '${name}' was removed from ${group}.`,
-          baseParam.wireType,
+          getParameterDeclarationType(baseParam),
           undefined,
           { name, location: group },
         ),
@@ -233,8 +233,8 @@ function diffParameterGroup(
           "request",
           elementPath,
           `Request parameter '${name}' was made optional.`,
-          baseParam.wireType,
-          headParam.wireType,
+          getParameterDeclarationType(baseParam),
+          getParameterDeclarationType(headParam),
           { name, location: group },
         ),
       );
@@ -246,8 +246,8 @@ function diffParameterGroup(
           "request",
           elementPath,
           `Request parameter '${name}' was made required.`,
-          baseParam.wireType,
-          headParam.wireType,
+          getParameterDeclarationType(baseParam),
+          getParameterDeclarationType(headParam),
           { name, location: group },
         ),
       );
@@ -260,13 +260,28 @@ function diffParameterGroup(
       continue;
     }
 
-    diffs.push(
-      ...compareTypes(
-        baseParamType,
-        headParamType,
-        createContext(identity, "request", elementPath),
-      ),
+    const parameterTypeDiffs = compareTypes(
+      baseParamType,
+      headParamType,
+      createContext(identity, "request", elementPath),
     );
+    const baseDeclarationType = getParameterDeclarationType(baseParam);
+    const headDeclarationType = getParameterDeclarationType(headParam);
+    for (const diff of parameterTypeDiffs) {
+      if (diff.headType === headParamType || diff.baseType === baseParamType) {
+        diff.baseType = baseDeclarationType;
+        diff.headType = headDeclarationType;
+        diff.baseSourceLocation = baseDeclarationType
+          ? getSourceLocation(baseDeclarationType, { locateId: true })
+          : undefined;
+        diff.headSourceLocation = headDeclarationType
+          ? getSourceLocation(headDeclarationType, { locateId: true })
+          : undefined;
+        diff.origin = resolveOrigin(headDeclarationType ?? baseDeclarationType);
+      }
+    }
+
+    diffs.push(...parameterTypeDiffs);
   }
 
   for (const [name, headParam] of headParams) {
@@ -282,7 +297,7 @@ function diffParameterGroup(
         `${group}.${name}`,
         `Request parameter '${name}' was added to ${group}.`,
         undefined,
-        headParam.wireType,
+        getParameterDeclarationType(headParam),
         { name, location: group },
       ),
     );
@@ -427,6 +442,10 @@ function getComparableType(type: Type | undefined): Type | undefined {
   }
 
   return type.kind === "ModelProperty" ? type.type : type;
+}
+
+function getParameterDeclarationType(param: ModelPropertyHttpCanonicalization): Type | undefined {
+  return param.sourceType ?? param.wireType;
 }
 
 function getBodyTypesByContentType(

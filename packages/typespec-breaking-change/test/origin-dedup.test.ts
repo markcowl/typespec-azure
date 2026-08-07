@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { computeDiffs } from "../src/diff/diff-engine.js";
 import { resolveOrigin } from "../src/diff/origin.js";
-import { applySuppressions } from "../src/suppression/suppression.js";
 import { classifyDiffs } from "../src/pipeline/policy.js";
-import type { VersionedView } from "../src/types.js";
 import { createVersionedView, enumerateVersions } from "../src/pipeline/versions.js";
+import { applySuppressions } from "../src/suppression/suppression.js";
+import type { VersionedView } from "../src/types.js";
 import { Tester, TesterWithSuppressions } from "./test-host.js";
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -88,15 +88,19 @@ describe("origin resolution (direct coverage)", () => {
 
     expect(inner).toBeDefined();
     expect(resolveOrigin(inner!.enums.get("Color")!)?.declarationPath).toBe("Outer.Inner.Color");
-    expect(resolveOrigin(inner!.unions.get("Direction")!.variants.get("North")!)?.declarationPath).toBe(
-      "Outer.Inner.Direction",
-    );
+    expect(
+      resolveOrigin(inner!.unions.get("Direction")!.variants.get("North")!)?.declarationPath,
+    ).toBe("Outer.Inner.Direction");
   });
 
   it("returns undefined for unnamed scalar, enum-member, and union-variant declarations", () => {
     expect(resolveOrigin({ kind: "Scalar", name: "" } as any)).toBeUndefined();
-    expect(resolveOrigin({ kind: "EnumMember", enum: { name: "", namespace: undefined } } as any)).toBeUndefined();
-    expect(resolveOrigin({ kind: "UnionVariant", union: { name: "", namespace: undefined } } as any)).toBeUndefined();
+    expect(
+      resolveOrigin({ kind: "EnumMember", enum: { name: "", namespace: undefined } } as any),
+    ).toBeUndefined();
+    expect(
+      resolveOrigin({ kind: "UnionVariant", union: { name: "", namespace: undefined } } as any),
+    ).toBeUndefined();
   });
 
   it("climbs anonymous property types when a parent property is discoverable", async () => {
@@ -173,7 +177,9 @@ describe("origin resolution (direct coverage)", () => {
       sourceProperty: undefined,
     } as any;
 
-    expect(resolveOrigin(projectedLegacy)?.declarationPath).toBe("TestService.WidgetProperties.legacy");
+    expect(resolveOrigin(projectedLegacy)?.declarationPath).toBe(
+      "TestService.WidgetProperties.legacy",
+    );
   });
 
   it("traces nested template-instantiated properties through templateMapper args", async () => {
@@ -222,7 +228,9 @@ describe("origin resolution (direct coverage)", () => {
       sourceProperty: undefined,
     } as any;
 
-    expect(resolveOrigin(projectedLegacy)?.declarationPath).toBe("TestService.WidgetProperties.legacy");
+    expect(resolveOrigin(projectedLegacy)?.declarationPath).toBe(
+      "TestService.WidgetProperties.legacy",
+    );
   });
 });
 
@@ -250,8 +258,7 @@ describe("origin resolution (two-spec comparison)", () => {
     const { diffs } = computeDiffs(baseView, headView);
     const typeChange = diffs.find(
       (d) =>
-        d.kind === "ResponsePropertyTypeChanged" &&
-        d.identity.element === "body.properties.value",
+        d.kind === "ResponsePropertyTypeChanged" && d.identity.element === "body.properties.value",
     );
 
     expect(typeChange).toBeDefined();
@@ -278,8 +285,7 @@ describe("origin resolution (two-spec comparison)", () => {
     const { diffs } = computeDiffs(baseView, headView);
     const typeChange = diffs.find(
       (d) =>
-        d.kind === "ResponsePropertyTypeChanged" &&
-        d.identity.element === "body.properties.value",
+        d.kind === "ResponsePropertyTypeChanged" && d.identity.element === "body.properties.value",
     );
 
     expect(typeChange).toBeDefined();
@@ -501,7 +507,7 @@ describe("origin resolution (two-spec comparison)", () => {
     expect(variantRemoval!.origin!.declarationPath).toContain("Direction");
   });
 
-  it("operation added has no origin", async () => {
+  it("operation added resolves to the operation declaration", async () => {
     const { baseView, headView } = await compileTwoSpecs(
       `
         ${preamble}
@@ -521,7 +527,7 @@ describe("origin resolution (two-spec comparison)", () => {
     const opAdded = diffs.find((d) => d.kind === "OperationAdded");
 
     expect(opAdded).toBeDefined();
-    expect(opAdded!.origin).toBeUndefined();
+    expect(opAdded!.origin?.declarationPath).toBe("TestService.getWidget");
   });
 });
 

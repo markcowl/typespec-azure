@@ -1,10 +1,13 @@
-import { describe, it, expect } from "vitest";
 import { compile, NodeHost } from "@typespec/compiler";
-import type { Program } from "@typespec/compiler";
-import { analyzeProgram, analyzeBaseAndHead } from "../src/pipeline/orchestrator.js";
-import { enumerateVersions, createVersionedView, buildPhaseBPairs } from "../src/pipeline/versions.js";
-import { computeDiffs } from "../src/diff/diff-engine.js";
 import { resolve } from "path";
+import { describe, expect, it } from "vitest";
+import { computeDiffs } from "../src/diff/diff-engine.js";
+import { analyzeBaseAndHead, analyzeProgram } from "../src/pipeline/orchestrator.js";
+import {
+  buildPhaseBPairs,
+  createVersionedView,
+  enumerateVersions,
+} from "../src/pipeline/versions.js";
 
 /**
  * Integration test against a REAL Azure ARM TypeSpec spec (Microsoft.AppConfiguration).
@@ -119,9 +122,7 @@ describe("integration: real ARM spec (AppConfiguration)", () => {
 
     expect(elapsed).toBeLessThan(30_000);
     // Log timing for visibility
-    console.log(
-      `AppConfiguration full analysis: ${elapsed}ms, ${result.findings.length} findings`,
-    );
+    console.log(`AppConfiguration full analysis: ${elapsed}ms, ${result.findings.length} findings`);
     console.log(`  Timing breakdown:`, result.timing);
   }, 60_000);
 });
@@ -162,9 +163,7 @@ describe("integration: large ARM spec (Network, 739 operations)", () => {
     const elapsed = Date.now() - start;
 
     expect(elapsed).toBeLessThan(30_000);
-    console.log(
-      `Network full analysis: ${elapsed}ms, ${result.findings.length} findings`,
-    );
+    console.log(`Network full analysis: ${elapsed}ms, ${result.findings.length} findings`);
     console.log(`  Timing breakdown:`, result.timing);
     console.log(`  Findings by severity:`, {
       error: result.findings.filter((f) => f.severity === "error").length,
@@ -172,7 +171,7 @@ describe("integration: large ARM spec (Network, 739 operations)", () => {
     });
   }, 120_000);
 
-  it("origin resolution achieves >90% coverage on large spec", async () => {
+  it("origin resolution achieves 100% coverage on large spec", async () => {
     const prog = await getProgram();
     const result = analyzeProgram(prog);
 
@@ -181,7 +180,7 @@ describe("integration: large ARM spec (Network, 739 operations)", () => {
     const pct = total > 0 ? (withOrigin / total) * 100 : 100;
 
     console.log(`  Origin coverage: ${withOrigin}/${total} (${Math.round(pct)}%)`);
-    expect(pct).toBeGreaterThanOrEqual(90);
+    expect(pct).toBe(100);
   }, 120_000);
 
   it("deduplication reduces finding count", async () => {
@@ -195,15 +194,15 @@ describe("integration: large ARM spec (Network, 739 operations)", () => {
 });
 
 /**
- * Integration test against ContainerService/fleet — a spec with MANY versions (13).
- * Tests version-count scaling: 3 stable + 10 preview → 8 Phase B pairs.
+ * Integration test against ContainerService/fleet — a spec with MANY versions (14).
+ * Tests version-count scaling: 4 stable + 10 preview → 9 Phase B pairs.
  * Performance target: <30s for full analysis.
  */
 const FLEET_ROOT = resolve(
   "C:/Users/markcowl/session2/azure-rest-api-specs/specification/containerservice/resource-manager/Microsoft.ContainerService/fleet",
 );
 
-describe("integration: many-version spec (ContainerService/fleet, 13 versions)", () => {
+describe("integration: many-version spec (ContainerService/fleet, 14 versions)", () => {
   let program: Awaited<ReturnType<typeof compile>> | undefined;
 
   async function getProgram() {
@@ -220,18 +219,18 @@ describe("integration: many-version spec (ContainerService/fleet, 13 versions)",
     expect(errors).toHaveLength(0);
   }, 60_000);
 
-  it("discovers 13 versions across stable and preview", async () => {
+  it("discovers 14 versions across stable and preview", async () => {
     const prog = await getProgram();
     const services = enumerateVersions(prog);
     expect(services.length).toBe(1);
 
     const fleet = services[0];
     expect(fleet.service.name).toBe("ContainerService");
-    expect(fleet.versions.length).toBe(13);
+    expect(fleet.versions.length).toBe(14);
 
-    // Verify version ordering: 3 stable interspersed with preview
+    // Verify version ordering: 4 stable interspersed with preview
     const stableVersions = fleet.versions.filter((v) => !v.endsWith("-preview"));
-    expect(stableVersions).toEqual(["2023-10-15", "2024-04-01", "2025-03-01"]);
+    expect(stableVersions).toEqual(["2023-10-15", "2024-04-01", "2025-03-01", "2026-06-01"]);
   }, 60_000);
 
   it("generates correct Phase B pairs (each candidate vs previous stable)", async () => {
@@ -245,7 +244,8 @@ describe("integration: many-version spec (ContainerService/fleet, 13 versions)",
     // After 2023-10-15: 2024-02-02-preview compared to 2023-10-15
     // After 2024-04-01: 2024-05-02-preview compared to 2024-04-01
     // After 2025-03-01: 2025-04-01-preview, 2025-08-01-preview, etc. compared to 2025-03-01
-    expect(pairs.length).toBe(8);
+    // 2026-06-01 is the new stable candidate compared to the prior stable baseline
+    expect(pairs.length).toBe(9);
 
     // First four versions are preview with no prior stable → no pairs
     // Verify specific pair structure
@@ -265,7 +265,11 @@ describe("integration: many-version spec (ContainerService/fleet, 13 versions)",
     const fleet = services[0];
 
     const firstView = createVersionedView(prog, fleet.service, fleet.versions[0]);
-    const lastView = createVersionedView(prog, fleet.service, fleet.versions[fleet.versions.length - 1]);
+    const lastView = createVersionedView(
+      prog,
+      fleet.service,
+      fleet.versions[fleet.versions.length - 1],
+    );
 
     const firstOps = computeDiffs(firstView, firstView).baseCanonicalization.operations.size;
     const lastOps = computeDiffs(lastView, lastView).baseCanonicalization.operations.size;
@@ -284,10 +288,12 @@ describe("integration: many-version spec (ContainerService/fleet, 13 versions)",
     const elapsed = Date.now() - start;
 
     expect(elapsed).toBeLessThan(30_000);
-    expect(result.summary.comparisonsPerformed).toBe(8);
+    expect(result.summary.comparisonsPerformed).toBe(9);
     expect(result.findings.length).toBeGreaterThan(0);
 
-    console.log(`  Fleet analysis: ${elapsed}ms, ${result.findings.length} findings, ${result.summary.comparisonsPerformed} pairs`);
+    console.log(
+      `  Fleet analysis: ${elapsed}ms, ${result.findings.length} findings, ${result.summary.comparisonsPerformed} pairs`,
+    );
     console.log(`  Timing:`, result.timing);
   }, 60_000);
 
@@ -295,7 +301,7 @@ describe("integration: many-version spec (ContainerService/fleet, 13 versions)",
     const prog = await getProgram();
     const result = analyzeProgram(prog, { phase: "cross-version" });
 
-    // 8 pairs × 2 views each = 16 versioned views at ~170ms each ≈ ~2.7s
+    // 9 pairs × 2 views each = 18 versioned views at ~170ms each ≈ ~3.1s
     // Allow up to 1s per view (generous for CI variability)
     const msPerView = result.timing.versionMutatorsMs / (result.summary.comparisonsPerformed * 2);
     expect(msPerView).toBeLessThan(1000);
@@ -336,7 +342,6 @@ describe("integration: many-version spec (ContainerService/fleet, 13 versions)",
     const originPct = total > 0 ? (withOrigin / total) * 100 : 100;
 
     console.log(`  Origin coverage: ${withOrigin}/${total} (${Math.round(originPct)}%)`);
-    // At least some findings should have origin (shared models)
-    expect(withOrigin).toBeGreaterThan(0);
+    expect(originPct).toBe(100);
   }, 60_000);
 });
