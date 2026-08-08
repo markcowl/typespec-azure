@@ -1,6 +1,6 @@
 # Source Tracing Gap Analysis
 
-This document explains the remaining gap between declaration-level source tracing and overall location resolution in `@azure-tools/typespec-breaking-change`.
+This document explains how declaration-level source tracing was achieved for `@azure-tools/typespec-breaking-change`, including the gap that existed before the fix in `fix/source-trace-100` and how it was resolved.
 
 The analysis is based on:
 
@@ -11,9 +11,9 @@ The analysis is based on:
 - `src/diff/origin.ts`
 - `src/pipeline/resolve-location.ts`
 
-## 1. What "92% / 88%" Means
+## 1. What "92% / 88%" Meant (Before Fix)
 
-The **92%** (Network) and **88.6%** (Fleet) numbers measure **origin-backed declaration resolution**, not general source coverage.
+The **92%** (Network) and **88.6%** (Fleet) numbers measured **origin-backed declaration resolution**, not general source coverage.
 
 In the evaluation script, that metric is computed as:
 
@@ -24,10 +24,12 @@ That tells us whether a finding can be traced back to the specific TypeSpec decl
 
 Important distinction:
 
-- **Declaration-level / origin-backed resolution is not 100%**
-- **Any-location resolution is 100%**
+- **Declaration-level / origin-backed resolution was not 100%** (before fix)
+- **Any-location resolution was already 100%**
 
-`resolveFindingLocation()` still resolves **every** finding to some location through the fallback chain, even when it cannot recover the exact declaration. In other words, the gap is in **specificity**, not **coverage**.
+`resolveFindingLocation()` always resolved **every** finding to some location through the fallback chain. The gap was in **specificity**, not **coverage**.
+
+**After the fix:** Declaration-level resolution is now **100%** on all evaluated specs.
 
 ## 2. The 6-Level Fallback Chain
 
@@ -93,9 +95,9 @@ Some findings are successful from a coverage standpoint even though they are not
 
 These have no property/model declaration to trace to, so operation-level resolution is the correct terminal result. They are part of the 100% any-location success rate, but not part of declaration-level origin coverage.
 
-## 4. Examples of Unsuccessful Declaration-Level Tracing
+## 4. The Gap That Existed: Parameter Declaration Tracing
 
-The remaining declaration-level gap in the evaluated specs is the Network query-parameter diff:
+Before the fix, the declaration-level gap was in query/header/path parameter diffs. For example, the Network query-parameter diff:
 
 - `AzureFirewall.tsp:72-73`
 - `@query("createAfcControlPlane")`
@@ -105,69 +107,68 @@ That produced:
 
 - `RequestQueryParameterAdded`
 - `elementPath = query.createAfcControlPlane`
-- `headType = Intrinsic:never`
+- `headType = Intrinsic:never` (the wire type, not the declaration)
 
-This finding still resolves to the Azure Firewall operation declaration, so it is fully covered by the fallback chain. But it does **not** resolve to the specific parameter declaration as a `ModelProperty` origin.
+The finding resolved to the Azure Firewall operation declaration (level 5 fallback), but could **not** resolve to the specific parameter declaration as a `ModelProperty` origin.
 
-Why it falls to operation level:
+Why it fell to operation level:
 
-1. the diff is created from the **wire parameter type**
+1. the diff was created from the **wire parameter type** (`param.wireType`)
 2. that wire type is often an intrinsic or canonicalized scalar
 3. `resolveOrigin()` cannot follow `sourceProperty` or template metadata from `Intrinsic:never`
-4. `resolveFindingLocation()` therefore skips declaration-level anchors and lands on the owning operation
+4. `resolveFindingLocation()` therefore skipped declaration-level anchors and landed on the owning operation
 
-## 5. Root Cause Analysis
+## 5. Root Cause and Fix
 
-The gap is in **`src/diff/diff-operations.ts`**, not in **`src/pipeline/resolve-location.ts`**.
+The gap was in **`src/diff/diff-operations.ts`**, not in **`src/pipeline/resolve-location.ts`**.
 
-`resolve-location.ts` is already doing the right thing: it consumes whatever anchors the diff engine preserved and falls back cleanly through the six levels.
+`resolve-location.ts` was already doing the right thing: consuming whatever anchors the diff engine preserved and falling back cleanly through the six levels.
 
-The real issue is earlier:
+The real issue was that when comparing **query/header/path parameters**, `diff-operations.ts` stored `param.wireType` instead of the declaration `ModelProperty`.
 
-- when comparing **query/header/path parameters**
-- `diff-operations.ts` stores the **wire type**
-- specifically `baseParam.wireType` / `headParam.wireType`
-- and often compares `getComparableType(...)`
+### The Fix (implemented in `fix/source-trace-100`)
 
-That means the diff is frequently anchored to:
+Added `getParameterDeclarationType()`:
 
-- `Intrinsic:never`
-- a scalar
-- or another canonicalized non-declaration type
+```typescript
+function getParameterDeclarationType(param: ModelPropertyHttpCanonicalization): Type | undefined {
+  return param.sourceType ?? param.wireType;
+}
+```
 
-In those cases, `src/diff/origin.ts` has nothing useful to follow:
+This prefers `param.sourceType` (the declaration `ModelProperty` from the HTTP canonicalization) over `param.wireType`. All parameter diff creation points now use this:
 
-- no `ModelProperty`
-- no `sourceProperty`
-- no template-instantiation chain
+- **Parameter removed:** `getParameterDeclarationType(baseParam)` instead of `baseParam.wireType`
+- **Parameter added:** `getParameterDeclarationType(headParam)` instead of `headParam.wireType`
+- **Parameter made optional/required:** both sides use declaration type
+- **Parameter type changed:** remaps `baseType`/`headType` to declaration types, sets both `baseSourceLocation` and `headSourceLocation` from the property's source location, and calls `resolveOrigin()`
 
-By contrast, model property diffs are much more successful because their `baseType` / `headType` are already the declaration `ModelProperty` values. Once the diff carries a real property, `resolveOrigin()` can recover the declaration path and source location.
+The comparison still operates on the **wire type** (via `getComparableType()`), so semantic correctness is preserved. Only the **reporting anchor** changes to the declaration property.
 
-## 6. Path to 100% Declaration-Level Resolution
+## 6. Metrics Summary
 
-The fix path is straightforward:
+### Before Fix
 
-1. **Change `diff-operations.ts` to carry the declaration `ModelProperty` for parameter diffs**
-   - keep the parameter declaration object alongside the wire type comparison
-2. **Set `baseSourceLocation` / `headSourceLocation` from that declaration property**
-3. **Call `resolveOrigin()` on the declaration property**
-   - the same way model-property diffs already do
+| Spec | Total Findings | Origin-Backed | Origin % | Any-Location % |
+|------|---------------:|--------------:|---------:|---------------:|
+| Network | 26 | 24 | 92.3% | 100% |
+| Fleet | 70 | 62 | 88.6% | 100% |
+| AppConfig | 0 | 0 | N/A | N/A |
 
-Concretely, the parameter diff should preserve both:
+### After Fix
 
-- the **declaration property** for source tracing
-- the **wire type** for semantic comparison
+| Spec | Total Findings | Origin-Backed | Origin % | Any-Location % |
+|------|---------------:|--------------:|---------:|---------------:|
+| Network | 55 | 55 | **100%** | 100% |
+| Fleet | 126 | 126 | **100%** | 100% |
+| AppConfig | 0 | 0 | N/A | N/A |
 
-That would let query/header/path parameter findings behave like model-property findings: compare by wire shape, report by declaration source.
+Note: finding counts increased because the updated evaluation runs against the latest upstream spec versions (more version pairs = more findings).
 
-## 7. Metrics Summary
+## 7. Remaining Work: Base Source Tracing
 
-| Spec | Total Findings | Origin-Backed | Origin % | Any-Location | Any-Location % |
-|------|---------------:|--------------:|---------:|-------------:|---------------:|
-| Network | 26 | 24 | 92.3% | 26 | 100% |
-| Fleet | 70 | 62 | 88.6% | 70 | 100% |
-| AppConfig | 0 | 0 | N/A | 0 | N/A |
+The fix sets both `headType` and `baseType` to declaration `ModelProperty` in parameter diffs, laying groundwork for future base source tracing. However, `resolveBaseSourceLocations()` (mirroring the HEAD algorithm for base types) is not yet implemented. See `docs/base-source-tracing-plan.md` for the TDD plan.
 
 ## Conclusion
 
-The source tracing system already has **full location coverage** on the evaluated real specs. The remaining gap is narrower: some operation parameter diffs are still represented in a way that loses the original declaration anchor before location resolution runs. Fixing that in `diff-operations.ts` should close the last declaration-level gap without changing the fallback logic in `resolve-location.ts`.
+Declaration-level source tracing is now **100%** on all evaluated real specs. The fix was surgical: a single helper function in `diff-operations.ts` that prefers `param.sourceType` over `param.wireType`, ensuring origin resolution receives a declaration `ModelProperty` it can trace through. The fallback chain in `resolve-location.ts` required no changes.
