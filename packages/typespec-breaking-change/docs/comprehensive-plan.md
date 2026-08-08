@@ -134,7 +134,7 @@ These have NO resolved design and genuinely need investigation or decisions.
 
 **Problem:** Source tracing works for common patterns but needs to be extended and unified.
 
-**Resolution (implemented in `fleet/improvements`):**
+**Resolution (implemented in PR #4 and completed in PR #5):**
 - 6-level fallback chain implemented in `src/pipeline/resolve-location.ts`:
   1. headSourceLocation (direct) — set by resolveHeadSourceLocations
   2. origin.sourceLocation — named declaration via sourceProperty/template chain
@@ -144,11 +144,13 @@ These have NO resolved design and genuinely need investigation or decisions.
   6. namespace — service namespace + elementPath
 - Scoped namespace lookup: only finds files in the service namespace's directory tree
 - `sourceTraceLevel` field added for debuggability (direct, ancestor, operation, namespace)
+- Parameter declaration tracing uses `getParameterDeclarationType()` so query/header/path diffs keep declaration-backed `ModelProperty` anchors
 - Template tracing via `sourceModels` + `templateMapper.args` (see B5)
-- Real-spec evaluation: Network 92% direct, Fleet 88.6% direct, AppConfiguration 100%
+- `resolveBaseSourceLocations()` now mirrors the HEAD repair algorithm for base-side declarations
+- Real-spec evaluation: HEAD origin resolution 100% on Network/Fleet/AppConfiguration; base tracing 100% on Network (55/55) and Fleet (126/126)
 
-**Evidence:** `src/pipeline/resolve-location.ts`, `docs/source-tracing-deep-dive.md`, design overview §8.2 updated.
-**Residual:** Base source location resolution not yet implemented (plan saved, deferred).
+**Evidence:** `src/pipeline/resolve-location.ts`, `docs/source-tracing-deep-dive.md`, `docs/source-tracing-gap-analysis.md`, `docs/base-source-tracing-plan.md`, design overview §8.2 updated.
+**Follow-up:** Broaden real-spec coverage in Phase 5.1.
 
 ### B3. Wildcard and Blanket Suppressions
 
@@ -310,7 +312,7 @@ See `typespec-breaking-change-test-coverage.md` for detailed scenario list.
 | 3.6 | Diff engine edge cases | 0.5 day |
 | 3.7 | Mixed Phase A+B scenarios | 0.5 day |
 | 3.8 | E2E scenarios (25 scenarios) | 1.5 days |
-| ~~3.9~~ | ~~Large-spec source tracing validation (100% on AppConfiguration, Fleet)~~ | ✅ Done |
+| ~~3.9~~ | ~~Large-spec source tracing validation (HEAD/base 100% on Network/Fleet; AppConfiguration 0 findings)~~ | ✅ Done |
 | 3.10 | Mixed new + existing suppression scenarios | 1 day |
 
 ### Phase 4: Documentation and Output (1 week)
@@ -350,7 +352,7 @@ See `typespec-breaking-change-validation-strategy.md` for full details.
 | 6.4 | Shadow-mode CI integration (comment-only) | Phase 4 (Side-by-Side) | 1 week |
 | 6.5 | Agreement rate dashboard and metrics | Phase 4 (Dashboard) | 0.5 week |
 
-**Precursor work completed:** Real-spec evaluation against Network (739 ops), Fleet (42 ops), and AppConfiguration validates that the comparison engine runs correctly at scale. Source tracing achieves 92% direct resolution. These serve as confidence evidence for Phase 3/4 readiness.
+**Precursor work completed:** Real-spec evaluation against Network, Fleet, and AppConfiguration validates that the comparison engine runs correctly at scale. Source tracing now achieves 100% HEAD and base resolution on the evaluated specs. These serve as confidence evidence for Phase 3/4 readiness.
 
 ### Phase 7: Graduation (1-2 weeks)
 
@@ -377,6 +379,7 @@ See `typespec-breaking-change-validation-strategy.md` for full details.
 | Wide suppression reporting | Same section / separate warning / flag | **Open** | — |
 | Scalar transition table scope | Full table / flag uniformly / progressive | **Open** (§7.2) | — |
 | Source tracing algorithm | 6-level fallback + template tracing | **Resolved & Implemented** | See B2, B5 |
+| Base source tracing | Mirror HEAD algorithm | **Resolved & Implemented** | `resolveBaseSourceLocations()` with 100% on all specs |
 | Output format documentation | JSON schema + Markdown spec | **Resolved & Implemented** | See B4 |
 | Source reorg | Flat files / logical subdirectories | **Resolved & Implemented** | cli/, diff/, pipeline/, suppression/, reporting/ |
 | Source trace target | 100% on N specs / best-effort with fallbacks | **Open** | — |
@@ -423,6 +426,22 @@ See `typespec-breaking-change-validation-strategy.md` for full details.
 ---
 
 ## Appendix: Change Log
+
+### 2026-08-08 — PR `fix/source-trace-100` (PR #5)
+
+**Work completed in this PR:**
+
+| Category | Item | Commit |
+|----------|------|--------|
+| **Source tracing** | Parameter declaration tracing via `getParameterDeclarationType()` restores declaration-backed HEAD tracing for query/header/path diffs | `0c00c323`, `7eb870b8` |
+| **Source tracing** | Base source tracing implemented via `resolveBaseSourceLocations()` | `25942f49` |
+| **Integration tests** | Fleet real-spec validation fixed across 14 versions / 9 version pairs | `25942f49` |
+| **Tests** | Test suite expanded to 418 passing tests | `7eb870b8`, `25942f49` |
+| **Coverage** | `resolve-location.ts` improved from 71% to 98%, `diff-operations.ts` reached 100%, overall branch coverage reached 85.93% | `7eb870b8`, `25942f49` |
+
+**Comprehensive plan items completed:**
+- B2 residual (base source tracing) → Resolved & Implemented
+- Phase 3.9 validation updated to 100% HEAD/base tracing on Network and Fleet
 
 ### 2026-08-07 — PR `fleet/improvements` (PR #4)
 

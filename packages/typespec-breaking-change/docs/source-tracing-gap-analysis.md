@@ -1,9 +1,9 @@
 # Source Tracing: Current State and Remaining Work
 
-This document describes how `@azure-tools/typespec-breaking-change` traces findings to TypeSpec source declarations, and what remains to be implemented.
+This document describes how `@azure-tools/typespec-breaking-change` traces findings to TypeSpec source declarations, the current implemented state, and any remaining follow-up.
 
 **HEAD source tracing:** 100% declaration-level origin resolution on all evaluated real specs.
-**Base source tracing:** Not yet implemented — see section 4.
+**Base source tracing:** Implemented with 100% resolution on all evaluated specs — see section 4.
 
 ## 1. How HEAD Source Tracing Works
 
@@ -69,27 +69,21 @@ This ensures parameter diffs carry the declaration `ModelProperty` (for tracing)
 | Fleet | 126 | 126 | 100% |
 | AppConfig | 0 | 0 | N/A |
 
-## 4. Remaining Work: Base Source Tracing
+## 4. Base Source Tracing Status
 
 HEAD source tracing answers "where should the developer look to fix this?" Base source tracing answers "where in the original spec was this defined before it changed?"
 
 ### Current state
 
-- `baseSourceLocation` is set during diff creation for model property diffs (the declaration `ModelProperty` is already captured)
-- For parameter diffs, `baseType` is now set to declaration `ModelProperty` (groundwork laid)
-- But there is **no `resolveBaseSourceLocations()`** equivalent that applies the full fallback chain to base types
-- Current base tracing percentage: **~0%** (no structured evaluation exists)
+- `resolveBaseSourceLocations()` is implemented, achieving **100%** base-side resolution on all evaluated specs
+- Evaluated metrics: **Network 55/55**, **Fleet 126/126**
+- Base tracing now mirrors the HEAD repair flow, including declaration-path lookup, scoped namespace lookup, template tracing, and parent-model fallback
+- `baseSourceTraceLevel` is recorded for debuggability
+- In the final selected report anchor, trace levels are still often **operation-level**, which is correct for many cross-version diffs where the base side is a projected version rather than the preferred user-facing location
 
-### What's needed
+### Remaining work
 
-1. **`resolveBaseSourceLocations()`** — mirror the HEAD algorithm for base types:
-   - Template tracing via `sourceModels`/`templateMapper.args` on base types
-   - Scoped namespace lookup in the base program
-   - Same 6-level fallback chain
-2. **Phase A vs Phase B handling:**
-   - Phase A: base and head are separate compilations (different type identity)
-   - Phase B: base and head are projections within the same program (shared identity)
-3. **`baseSourceTraceLevel`** field for debuggability
-4. **Tests** verifying base tracing for all finding categories
+- No known functional gap remains for base source tracing
+- Remaining follow-up is broader evaluation coverage on additional specs, not new tracing mechanics
 
-See `docs/base-source-tracing-plan.md` for the full TDD implementation plan.
+See `docs/base-source-tracing-plan.md` for the historical TDD plan that led to the implementation.

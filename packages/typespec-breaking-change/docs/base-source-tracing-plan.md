@@ -1,5 +1,13 @@
 # Base Source Tracing TDD Plan
 
+## Status: Implemented
+
+- `resolveBaseSourceLocations()` is now implemented
+- Real-spec results: **100%** base tracing on evaluated specs — Network **55/55**, Fleet **126/126**
+- Validation status: **418 tests passing**
+- Coverage status: `resolve-location.ts` is now at **98%** line coverage
+- The remainder of this document is preserved as historical design/reference material for the implementation that was completed
+
 ## 1. Current State Analysis
 
 ### Files reviewed
