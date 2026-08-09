@@ -7,6 +7,7 @@ import {
   type SourceLocation,
   type Type,
 } from "@typespec/compiler";
+import { resolveOrigin } from "../diff/origin.js";
 import type { Finding, ResolvedLocation, SourceTraceLevel } from "../types.js";
 
 /**
@@ -40,7 +41,7 @@ export function resolveFindingLocation(finding: Finding): ResolvedLocation | und
 
   // 3. Base source location fallback
   if (diff.baseSourceLocation && isValidSourceLocation(diff.baseSourceLocation)) {
-    return resolvedLocation(diff.baseSourceLocation, "base");
+    return resolvedLocation(diff.baseSourceLocation, diff.baseSourceTraceLevel ?? "base");
   }
 
   // 3. Parent model fallback — when type exists but has no useful location
@@ -217,6 +218,95 @@ export function resolveHeadSourceLocations(findings: Finding[], headProgram: Pro
       diff.headSourceTraceLevel = "parentModel";
     }
   }
+}
+
+export function resolveBaseSourceLocations(findings: Finding[], baseProgram?: Program): void {
+  for (const finding of findings) {
+    const resolved =
+      resolveBaseTypeSourceLocation(finding.diff.baseType) ??
+      resolveBaseOperationSourceLocation(finding) ??
+      resolveBaseNamespaceSourceLocation(finding, baseProgram);
+
+    if (!resolved) {
+      continue;
+    }
+
+    finding.diff.baseSourceLocation = resolved.location;
+    finding.diff.baseSourceTraceLevel = resolved.traceLevel;
+  }
+}
+
+function resolveBaseTypeSourceLocation(
+  baseType: Type | undefined,
+): {
+  location: SourceLocation;
+  traceLevel: Extract<SourceTraceLevel, "direct" | "ancestor" | "operation">;
+} | undefined {
+  if (!baseType) {
+    return undefined;
+  }
+
+  if (baseType.kind === "Operation") {
+    const location = safeGetSourceLocation(baseType);
+    if (location && isValidSourceLocation(location)) {
+      return { location, traceLevel: "operation" };
+    }
+  }
+
+  const origin = resolveOrigin(baseType);
+  if (origin?.sourceLocation && isValidSourceLocation(origin.sourceLocation)) {
+    return {
+      location: origin.sourceLocation,
+      traceLevel: origin.type === baseType ? "direct" : "ancestor",
+    };
+  }
+
+  const typeLocation = safeGetSourceLocation(baseType);
+  if (typeLocation && isValidSourceLocation(typeLocation)) {
+    return { location: typeLocation, traceLevel: "direct" };
+  }
+
+  const fallback = resolveTypeLocationWithModelFallback(baseType);
+  if (fallback?.location && isValidSourceLocation(fallback.location)) {
+    return {
+      location: fallback.location,
+      traceLevel: fallback.traceLevel === "direct" ? "direct" : "ancestor",
+    };
+  }
+
+  return undefined;
+}
+
+function resolveBaseOperationSourceLocation(
+  finding: Finding,
+): { location: SourceLocation; traceLevel: Extract<SourceTraceLevel, "operation"> } | undefined {
+  const operationLocation = finding.diff.operationSourceLocation;
+  if (operationLocation && isValidSourceLocation(operationLocation)) {
+    return { location: operationLocation, traceLevel: "operation" };
+  }
+
+  return undefined;
+}
+
+function resolveBaseNamespaceSourceLocation(
+  finding: Finding,
+  baseProgram?: Program,
+): { location: SourceLocation; traceLevel: Extract<SourceTraceLevel, "namespace"> } | undefined {
+  const namespace = finding.serviceNamespace
+    ? (baseProgram
+        ? findMatchingNamespace(baseProgram, finding.serviceNamespace) ?? finding.serviceNamespace
+        : finding.serviceNamespace)
+    : undefined;
+
+  if (!namespace) {
+    return undefined;
+  }
+
+  const location = safeGetSourceLocation(namespace);
+  if (location && isValidSourceLocation(location)) {
+    return { location, traceLevel: "namespace" };
+  }
+  return undefined;
 }
 
 function findModelFromOrigin(program: Program, declarationPath: string | undefined): Model | undefined {

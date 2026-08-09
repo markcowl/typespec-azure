@@ -1,17 +1,10 @@
-import {
-  canonicalizeOperations,
-  type CanonicalizationResult,
-} from "./canonicalize.js";
-import { diffOperations } from "./diff-operations.js";
 import type { DiffKind } from "../diff-kind.js";
-import type {
-  ApiDiff,
-  OperationDiffIdentity,
-  OperationIdentity,
-  VersionedView,
-} from "../types.js";
+import type { ApiDiff, OperationDiffIdentity, OperationIdentity, VersionedView } from "../types.js";
+import { canonicalizeOperations, type CanonicalizationResult } from "./canonicalize.js";
+import { diffOperations } from "./diff-operations.js";
+import { resolveOrigin } from "./origin.js";
 
-import { getSourceLocation, type SourceLocation } from "@typespec/compiler";
+import { getSourceLocation, type SourceLocation, type Type } from "@typespec/compiler";
 import { isOperationIdentity } from "../types.js";
 
 /**
@@ -51,6 +44,7 @@ export function computeDiffs(base: VersionedView, head: VersionedView): DiffResu
           baseOp.identity,
           `Operation ${baseOp.identity.method} ${baseOp.identity.path} was removed.`,
           getOperationSourceLocation(baseOp.httpOperation.operation),
+          baseOp.httpOperation.operation,
         ),
       );
     }
@@ -64,6 +58,7 @@ export function computeDiffs(base: VersionedView, head: VersionedView): DiffResu
           headOp.identity,
           `Operation ${headOp.identity.method} ${headOp.identity.path} was added.`,
           getOperationSourceLocation(headOp.httpOperation.operation),
+          headOp.httpOperation.operation,
         ),
       );
     }
@@ -100,7 +95,9 @@ export function computeDiffs(base: VersionedView, head: VersionedView): DiffResu
  */
 function getOperationSourceLocation(operation: any): SourceLocation | undefined {
   if (!operation) return undefined;
-  return getSourceLocation(operation, { locateId: true }) ?? getSourceLocation(operation) ?? undefined;
+  return (
+    getSourceLocation(operation, { locateId: true }) ?? getSourceLocation(operation) ?? undefined
+  );
 }
 
 /**
@@ -111,6 +108,7 @@ function makeOperationDiff(
   identity: OperationIdentity,
   message: string,
   operationSourceLocation?: SourceLocation,
+  operationType?: Type,
 ): ApiDiff {
   const diffIdentity: OperationDiffIdentity = {
     operation: identity,
@@ -121,8 +119,14 @@ function makeOperationDiff(
   return {
     kind,
     identity: diffIdentity,
+    origin: resolveOrigin(operationType),
+    baseSourceLocation: kind === "OperationRemoved" ? operationSourceLocation : undefined,
+    headSourceLocation: kind === "OperationAdded" ? operationSourceLocation : undefined,
+    baseType: kind === "OperationRemoved" ? operationType : undefined,
+    headType: kind === "OperationAdded" ? operationType : undefined,
     message,
     operationSourceLocation,
+    operationType,
   };
 }
 

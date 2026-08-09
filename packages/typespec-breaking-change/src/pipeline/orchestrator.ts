@@ -11,7 +11,7 @@ import type {
   VersionPair,
 } from "../types.js";
 import { classifyDiffs } from "./policy.js";
-import { resolveHeadSourceLocations } from "./resolve-location.js";
+import { resolveBaseSourceLocations, resolveHeadSourceLocations } from "./resolve-location.js";
 import {
   buildPhaseAPairs,
   buildPhaseBPairs,
@@ -93,6 +93,7 @@ export function analyzeProgram(program: Program, options?: AnalysisOptions): Ana
   const findings = applySuppressions(deduped, program);
   timing.suppressMs += Date.now() - suppressStart;
 
+  resolveBaseSourceLocations(findings, program);
   resolveHeadSourceLocations(findings, program);
 
   timing.totalMs = Date.now() - totalStart;
@@ -237,6 +238,7 @@ export function analyzeBaseAndHead(
   const findings = applySuppressions(deduped, headProgram);
   timing.suppressMs += Date.now() - suppressStart;
 
+  resolveBaseSourceLocations(findings, baseProgram);
   // Resolve head source locations for cross-compilation findings.
   // Looks up types by name in the unmutated head program to determine
   // whether a type truly doesn't exist in head (link to parent) vs

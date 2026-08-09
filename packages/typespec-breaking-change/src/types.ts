@@ -108,6 +108,15 @@ export interface ApiDiff {
   /** Source location in the base compilation (for the affected declaration). */
   baseSourceLocation?: SourceLocation;
 
+  /**
+   * How baseSourceLocation was resolved when it was synthesized or upgraded
+   * after diffing.
+   */
+  baseSourceTraceLevel?: Extract<
+    SourceTraceLevel,
+    "direct" | "ancestor" | "operation" | "namespace"
+  >;
+
   /** Source location in the head compilation (for the affected declaration). */
   headSourceLocation?: SourceLocation;
 
@@ -161,6 +170,7 @@ export interface OriginDeclaration {
 
 export type SourceTraceLevel =
   | "direct"
+  | "ancestor"
   | "origin"
   | "base"
   | "parentModel"

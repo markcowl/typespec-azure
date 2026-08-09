@@ -179,16 +179,17 @@ The test runner should:
 
 ## 8. Current Progress
 
-**As of 2026-08-07:**
+**As of 2026-08-08:**
 
-- **Real-spec evaluation completed:** Network (739 ops, 26 findings), Fleet (42 ops, 70 findings), AppConfiguration (0 findings). All specs compile and analyze successfully within CI budget.
-- **Source tracing validated:** 92% direct resolution on Network, 88.6% on Fleet, 100% on AppConfiguration. Template tracing via `sourceModels`/`templateMapper.args` resolves ARM template boundaries.
-- **400 tests passing:** Includes 9 Resource merge/suppression scenario tests across all diff kinds, Priority 4 merge edge cases, and real-spec integration tests.
+- **Real-spec evaluation completed:** Network (55 findings), Fleet (126 findings across 14 versions / 9 version pairs), AppConfiguration (0 findings). All evaluated specs compile and analyze successfully within CI budget.
+- **Source tracing validated:** 100% HEAD source tracing and 100% base source tracing on all evaluated specs. Template tracing via `sourceModels`/`templateMapper.args`, parameter declaration tracing via `getParameterDeclarationType()`, and `resolveBaseSourceLocations()` now cover the real-spec scenarios exercised so far.
+- **418 tests passing:** Includes the expanded source-tracing coverage, Fleet integration fixes, and regression coverage for the new base-side repair flow.
+- **Coverage improved:** `resolve-location.ts` is now at 98% line coverage.
 - **4 demo PRs deployed:** PRs #6-#9 in `markcowl/azure-rest-api-specs` demonstrate Phase A and Phase B findings with and without suppressions.
 - **OAD correlation document exists:** `typespec-breaking-change-oad-correlation.md` maps OAD rules to DiffKinds. Phase 1 test conversion has not yet started.
 - **Phase 2 partial coverage:** Many unique DiffKinds have positive/negative tests. Suppression behavior tested for both `@approvedBreakingChange` and `@approvedUnversionedChange`. Phase A same-version tests exist via demo PRs and orchestrator tests.
 
-**Readiness assessment:** The tool is ready to begin Phase 1 (OAD test conversion) and Phase 3 (merged PR analysis) in parallel. Phase 4 (side-by-side) requires CI integration work (Phase 6.4 in comprehensive plan).
+**Readiness assessment:** The source-tracing workstream is complete for the evaluated specs, and the tool is ready to begin Phase 1 (OAD test conversion) and Phase 3 (merged PR analysis) in parallel. Phase 4 (side-by-side) requires CI integration work (Phase 6.4 in comprehensive plan).
 
 ## 9. Success Criteria
 

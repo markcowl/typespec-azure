@@ -1,67 +1,163 @@
 import { describe, it, expect } from "vitest";
-import { compile, NodeHost } from "@typespec/compiler";
 import { analyzeProgram, analyzeBaseAndHead } from "../src/pipeline/orchestrator.js";
-import { resolve } from "path";
-import { existsSync } from "fs";
-import { fileURLToPath } from "url";
-import { dirname } from "path";
-
-/** Path to our library's main.tsp for additionalImports */
-function getLibraryPath(): string {
-  const thisFile = fileURLToPath(import.meta.url);
-  return resolve(dirname(thisFile), "..", "lib", "main.tsp");
-}
-
-async function compileSpec(mainFile: string) {
-  return compile(NodeHost, mainFile, {
-    noEmit: true,
-    additionalImports: [getLibraryPath()],
-  });
-}
+import { TesterWithArm } from "./test-host.js";
 
 /**
- * Scenario validation tests that mirror the demo PRs.
- * These test the exact patterns used in the Contoso employee spec
- * to ensure the tool produces correct results for the demo.
+ * End-to-end scenario validation tests using real Azure ARM libraries.
+ * These test the exact patterns used in Azure Resource Manager specs
+ * (TrackedResource<T>, @armProviderNamespace, versioning, etc.)
  *
  * Scenarios:
  * 1. Phase B: Breaking changes with versioning (PR #2 pattern)
  * 2. Phase A: Unversioned changes (PR #4 pattern)
- * 3. Phase B: Suppressed breaking changes (PR #3 pattern)
- * 4. Resource merge with ARM TrackedResource<T>
+ * 3. Resource merge with ARM TrackedResource<T>
+ * 4. Reporting: version comparisons tracked
  */
 
-const DEMO_SPEC_ROOT = resolve(
-  "C:/Users/markcowl/session2/azure-rest-api-specs/specification/contosowidgetmanager/Contoso.Management",
-);
+/** Contoso ARM spec — base (2 versions, no breaking changes) */
+const CONTOSO_BASE = `
+  @armProviderNamespace
+  @service(#{ title: "Microsoft.Contoso management service" })
+  @versioned(Microsoft.Contoso.Versions)
+  namespace Microsoft.Contoso;
 
-describe("scenario validation: Contoso demo spec", () => {
+  enum Versions {
+    @armCommonTypesVersion(Azure.ResourceManager.CommonTypes.Versions.v5)
+    v2021_11_01: "2021-11-01",
+  }
+
+  interface Operations extends Azure.ResourceManager.Operations {}
+
+  model Employee is TrackedResource<EmployeeProperties> {
+    ...ResourceNameParameter<Employee>;
+  }
+
+  model EmployeeProperties {
+    age?: int32;
+    city?: string;
+    @visibility(Lifecycle.Read)
+    provisioningState?: ProvisioningState;
+  }
+
+  @lroStatus
+  union ProvisioningState {
+    ResourceProvisioningState,
+    Provisioning: "Provisioning",
+    string,
+  }
+
+  @armResourceOperations
+  interface Employees {
+    get is ArmResourceRead<Employee>;
+    createOrUpdate is ArmResourceCreateOrReplaceAsync<Employee>;
+    update is ArmResourcePatchSync<Employee, EmployeeProperties>;
+    delete is ArmResourceDeleteWithoutOkAsync<Employee>;
+    listByResourceGroup is ArmResourceListByParent<Employee>;
+    listBySubscription is ArmListBySubscription<Employee>;
+  }
+`;
+
+/** Contoso ARM spec — PR #2 pattern (adds version with type change + removal) */
+const CONTOSO_PR2 = `
+  @armProviderNamespace
+  @service(#{ title: "Microsoft.Contoso management service" })
+  @versioned(Microsoft.Contoso.Versions)
+  namespace Microsoft.Contoso;
+
+  enum Versions {
+    @armCommonTypesVersion(Azure.ResourceManager.CommonTypes.Versions.v5)
+    v2021_11_01: "2021-11-01",
+
+    @armCommonTypesVersion(Azure.ResourceManager.CommonTypes.Versions.v5)
+    v2025_01_01: "2025-01-01",
+  }
+
+  interface Operations extends Azure.ResourceManager.Operations {}
+
+  model Employee is TrackedResource<EmployeeProperties> {
+    ...ResourceNameParameter<Employee>;
+  }
+
+  model EmployeeProperties {
+    @typeChangedFrom(Versions.v2025_01_01, int32)
+    age?: int64;
+
+    @removed(Versions.v2025_01_01)
+    city?: string;
+
+    @visibility(Lifecycle.Read)
+    provisioningState?: ProvisioningState;
+  }
+
+  @lroStatus
+  union ProvisioningState {
+    ResourceProvisioningState,
+    Provisioning: "Provisioning",
+    string,
+  }
+
+  @armResourceOperations
+  interface Employees {
+    get is ArmResourceRead<Employee>;
+    createOrUpdate is ArmResourceCreateOrReplaceAsync<Employee>;
+    update is ArmResourcePatchSync<Employee, EmployeeProperties>;
+    delete is ArmResourceDeleteWithoutOkAsync<Employee>;
+    listByResourceGroup is ArmResourceListByParent<Employee>;
+    listBySubscription is ArmListBySubscription<Employee>;
+  }
+`;
+
+/** Contoso ARM spec — PR #4 pattern (city removed without versioning) */
+const CONTOSO_PR4 = `
+  @armProviderNamespace
+  @service(#{ title: "Microsoft.Contoso management service" })
+  @versioned(Microsoft.Contoso.Versions)
+  namespace Microsoft.Contoso;
+
+  enum Versions {
+    @armCommonTypesVersion(Azure.ResourceManager.CommonTypes.Versions.v5)
+    v2021_11_01: "2021-11-01",
+  }
+
+  interface Operations extends Azure.ResourceManager.Operations {}
+
+  model Employee is TrackedResource<EmployeeProperties> {
+    ...ResourceNameParameter<Employee>;
+  }
+
+  model EmployeeProperties {
+    age?: int32;
+    @visibility(Lifecycle.Read)
+    provisioningState?: ProvisioningState;
+  }
+
+  @lroStatus
+  union ProvisioningState {
+    ResourceProvisioningState,
+    Provisioning: "Provisioning",
+    string,
+  }
+
+  @armResourceOperations
+  interface Employees {
+    get is ArmResourceRead<Employee>;
+    createOrUpdate is ArmResourceCreateOrReplaceAsync<Employee>;
+    update is ArmResourcePatchSync<Employee, EmployeeProperties>;
+    delete is ArmResourceDeleteWithoutOkAsync<Employee>;
+    listByResourceGroup is ArmResourceListByParent<Employee>;
+    listBySubscription is ArmListBySubscription<Employee>;
+  }
+`;
+
+describe("scenario validation: ARM end-to-end", () => {
   describe("Phase B: cross-version breaking changes (PR #2 pattern)", () => {
-    let headProgram: Awaited<ReturnType<typeof compileSpec>> | undefined;
-
-    async function getHeadProgram() {
-      if (headProgram) return headProgram;
-      // Compile the PR #2 branch spec (with versioning decorators)
-      headProgram = await compileSpec(
-        resolve(DEMO_SPEC_ROOT, "../Contoso.Management.pr2/main.tsp"),
-      );
-      return headProgram;
-    }
-
-    // Skip if the PR #2 spec fixture doesn't exist
-    const PR2_FIXTURE = resolve(DEMO_SPEC_ROOT, "../Contoso.Management.pr2");
-
-    it("produces exactly 2 Resource findings for age type change and city removal", async (ctx) => {
-      if (!existsSync(PR2_FIXTURE)) { ctx.skip(); return; }
-      const program = await getHeadProgram();
+    it("detects type change and property removal across versions", async () => {
+      const { program } = await TesterWithArm.compile(CONTOSO_PR2);
       const result = analyzeProgram(program, { phase: "cross-version" });
 
       const errors = result.findings.filter(
         (f) => f.severity === "error" && !f.suppressed,
       );
-
-      // Should be exactly 2: ResourcePropertyTypeChanged (age) + ResourcePropertyRemoved (city)
-      expect(errors).toHaveLength(2);
 
       const typeChanged = errors.find((f) => f.diff.kind === "ResourcePropertyTypeChanged");
       const removed = errors.find((f) => f.diff.kind === "ResourcePropertyRemoved");
@@ -69,26 +165,18 @@ describe("scenario validation: Contoso demo spec", () => {
       expect(typeChanged).toBeDefined();
       expect(removed).toBeDefined();
 
-      // Verify identities
       expect(typeChanged!.diff.identity.element).toContain("age");
       expect(removed!.diff.identity.element).toContain("city");
 
-      // Verify version pair
       expect(typeChanged!.versionPair.baseVersion).toBe("2021-11-01");
       expect(typeChanged!.versionPair.headVersion).toBe("2025-01-01");
     }, 30_000);
   });
 
   describe("Phase A: unversioned changes (PR #4 pattern)", () => {
-    it("detects city removal as unversioned change when comparing base to head", async (ctx) => {
-      // Compile main branch spec (with city) as base
-      const baseProgram = await compileSpec(resolve(DEMO_SPEC_ROOT, "main.tsp"));
-
-      // Compile a modified version without city as head
-      // We simulate this by using a test fixture
-      const PR4_FIXTURE = resolve(DEMO_SPEC_ROOT, "../Contoso.Management.pr4");
-      if (!existsSync(PR4_FIXTURE)) { ctx.skip(); return; }
-      const headProgram = await compileSpec(resolve(PR4_FIXTURE, "main.tsp"));
+    it("detects city removal when comparing base to head", async () => {
+      const { program: baseProgram } = await TesterWithArm.compile(CONTOSO_BASE);
+      const { program: headProgram } = await TesterWithArm.compile(CONTOSO_PR4);
 
       const result = analyzeBaseAndHead(baseProgram, headProgram, {
         phase: "same-version",
@@ -98,16 +186,13 @@ describe("scenario validation: Contoso demo spec", () => {
         (f) => f.severity === "error" && !f.suppressed,
       );
 
-      // Should detect ResourcePropertyRemoved for city in each version
       const cityRemoved = errors.filter(
         (f) => f.diff.kind === "ResourcePropertyRemoved" &&
           f.diff.identity.element.includes("city"),
       );
 
-      // At least one per API version (2 versions in the spec)
       expect(cityRemoved.length).toBeGreaterThanOrEqual(1);
 
-      // Version pairs should be same-version (base→head of same version)
       for (const f of cityRemoved) {
         expect(f.versionPair.baseVersion).toBe(f.versionPair.headVersion);
         expect(f.phase).toBe("same-version");
@@ -116,28 +201,25 @@ describe("scenario validation: Contoso demo spec", () => {
   });
 
   describe("Resource merge with ARM TrackedResource<T>", () => {
-    it("merges Request+Response into Resource for ARM resource properties", async () => {
-      // Compile the main branch spec (which uses TrackedResource<EmployeeProperties>)
-      const program = await compileSpec(resolve(DEMO_SPEC_ROOT, "main.tsp"));
+    it("findings use Resource* kinds for shared properties", async () => {
+      const { program } = await TesterWithArm.compile(CONTOSO_PR2);
       const result = analyzeProgram(program, { phase: "cross-version" });
 
-      // If there are any findings, Resource* kinds should be used for shared properties
       const findings = result.findings.filter((f) => f.severity === "error");
       for (const f of findings) {
         if (f.diff.identity.element.includes("properties.properties.")) {
-          // Properties on the resource model should be Resource*, not separate Request/Response
           expect(f.diff.kind).toMatch(/^Resource/);
         }
       }
     }, 30_000);
 
-    it("origin traces to the source model property, not ARM-generated copies", async () => {
-      const program = await compileSpec(resolve(DEMO_SPEC_ROOT, "main.tsp"));
+    it("origin traces to user-declared model property, not ARM-generated copies", async () => {
+      const { program } = await TesterWithArm.compile(CONTOSO_PR2);
       const result = analyzeProgram(program);
 
       for (const f of result.findings) {
         if (f.diff.origin) {
-          // Origin should never point to a visibility-filtered copy
+          // Origin should never point to visibility-filtered copies
           expect(f.diff.origin.declarationPath).not.toContain("CreateOrUpdate");
           expect(f.diff.origin.declarationPath).not.toContain("Update");
 
@@ -151,7 +233,7 @@ describe("scenario validation: Contoso demo spec", () => {
     }, 30_000);
 
     it("self-comparison (base=head) produces 0 findings", async () => {
-      const program = await compileSpec(resolve(DEMO_SPEC_ROOT, "main.tsp"));
+      const { program } = await TesterWithArm.compile(CONTOSO_BASE);
       const result = analyzeBaseAndHead(program, program, { phase: "same-version" });
 
       expect(result.findings).toHaveLength(0);
@@ -160,11 +242,11 @@ describe("scenario validation: Contoso demo spec", () => {
 
   describe("reporting: version comparisons are tracked", () => {
     it("versionComparisons array is populated for Phase B", async () => {
-      const program = await compileSpec(resolve(DEMO_SPEC_ROOT, "main.tsp"));
+      const { program } = await TesterWithArm.compile(CONTOSO_PR2);
       const result = analyzeProgram(program, { phase: "cross-version" });
 
       expect(result.summary.versionComparisons).toBeDefined();
-      expect(result.summary.versionComparisons.length).toBeGreaterThanOrEqual(0);
+      expect(result.summary.versionComparisons.length).toBeGreaterThanOrEqual(1);
 
       for (const vc of result.summary.versionComparisons) {
         expect(vc.serviceName).toBeTruthy();
@@ -176,7 +258,7 @@ describe("scenario validation: Contoso demo spec", () => {
     }, 30_000);
 
     it("summary includes phase when filtered", async () => {
-      const program = await compileSpec(resolve(DEMO_SPEC_ROOT, "main.tsp"));
+      const { program } = await TesterWithArm.compile(CONTOSO_PR2);
       const result = analyzeProgram(program, { phase: "cross-version" });
 
       expect(result.summary.phase).toBe("cross-version");

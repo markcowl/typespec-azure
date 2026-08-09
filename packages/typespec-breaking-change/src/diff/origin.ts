@@ -1,13 +1,13 @@
 import {
   getSourceLocation,
-  type Enum,
   type EnumMember,
+  type Interface,
   type Model,
   type ModelProperty,
   type Namespace,
+  type Operation,
   type SourceLocation,
   type Type,
-  type Union,
   type UnionVariant,
 } from "@typespec/compiler";
 import type { OriginDeclaration } from "../types.js";
@@ -46,6 +46,8 @@ export function resolveOrigin(type?: Type): OriginDeclaration | undefined {
       return resolveUnionVariantOrigin(type);
     case "Scalar":
       return resolveNamedTypeOrigin(type, type.name, type.namespace);
+    case "Operation":
+      return resolveOperationOrigin(type);
     default:
       return undefined;
   }
@@ -80,6 +82,24 @@ function resolveModelPropertyOrigin(prop: ModelProperty): OriginDeclaration | un
       declarationPath: buildDeclarationPath(resolved.model!, resolved.name),
       type: resolved,
       sourceLocation: safeGetSourceLocation(resolved),
+    };
+  }
+
+  const enclosingOperation = findEnclosingOperation(original);
+  if (enclosingOperation) {
+    return {
+      declarationPath: buildOperationPropertyPath(enclosingOperation, original.name),
+      type: original,
+      sourceLocation: safeGetSourceLocation(original),
+    };
+  }
+
+  const enclosingOperationPath = findEnclosingOperationPathFromNode(original);
+  if (enclosingOperationPath) {
+    return {
+      declarationPath: `${enclosingOperationPath}.${original.name}`,
+      type: original,
+      sourceLocation: safeGetSourceLocation(original),
     };
   }
 
@@ -216,6 +236,18 @@ function resolveUnionVariantOrigin(variant: UnionVariant): OriginDeclaration | u
   return undefined;
 }
 
+function resolveOperationOrigin(operation: Operation): OriginDeclaration | undefined {
+  if (!operation.name) {
+    return undefined;
+  }
+
+  return {
+    declarationPath: buildOperationQualifiedName(operation),
+    type: operation,
+    sourceLocation: safeGetSourceLocation(operation),
+  };
+}
+
 /**
  * Build an OriginDeclaration for a named type.
  */
@@ -322,6 +354,11 @@ function buildDeclarationPath(model: Model, propertyName: string): string {
   return `${modelPath}.${propertyName}`;
 }
 
+function buildOperationPropertyPath(operation: Operation, propertyName: string): string {
+  const operationPath = buildOperationQualifiedName(operation);
+  return `${operationPath}.${propertyName}`;
+}
+
 /**
  * Build a qualified name from namespace + name.
  */
@@ -336,9 +373,111 @@ function buildQualifiedName(namespace: Namespace | undefined, name: string): str
   return parts.join(".");
 }
 
+function buildOperationQualifiedName(operation: Operation): string {
+  const interfacePath = buildInterfaceQualifiedName(operation.interface);
+  if (interfacePath) {
+    return `${interfacePath}.${operation.name}`;
+  }
+
+  return buildQualifiedName(operation.namespace, operation.name);
+}
+
+function buildInterfaceQualifiedName(iface: Interface | undefined): string | undefined {
+  if (!iface?.name) {
+    return undefined;
+  }
+
+  return buildQualifiedName(iface.namespace, iface.name);
+}
+
 /**
  * Safely get source location, returning a synthetic one if unavailable.
  */
 function safeGetSourceLocation(type: Type): SourceLocation {
-  return getSourceLocation(type, { locateId: true }) ?? getSourceLocation(type) ?? ({} as SourceLocation);
+  return (
+    getSourceLocation(type, { locateId: true }) ?? getSourceLocation(type) ?? ({} as SourceLocation)
+  );
+}
+
+function findEnclosingOperation(prop: ModelProperty): Operation | undefined {
+  const parametersModel = prop.model;
+  if (!parametersModel) {
+    return undefined;
+  }
+
+  const namespace = parametersModel.namespace;
+  if (namespace) {
+    for (const operation of namespace.operations.values()) {
+      if (operation.parameters === parametersModel) {
+        return operation;
+      }
+    }
+
+    for (const iface of namespace.interfaces.values()) {
+      for (const operation of iface.operations.values()) {
+        if (operation.parameters === parametersModel) {
+          return operation;
+        }
+      }
+    }
+  }
+
+  if (!parametersModel.node) {
+    return undefined;
+  }
+
+  let current = (parametersModel.node as any).parent;
+  while (current) {
+    const operationType = current.symbol?.type;
+    if (operationType?.kind === "Operation") {
+      return operationType as Operation;
+    }
+    current = current.parent;
+  }
+
+  return undefined;
+}
+
+function findEnclosingOperationPathFromNode(prop: ModelProperty): string | undefined {
+  let operationName: string | undefined;
+  let interfaceName: string | undefined;
+  let current: any = prop.node?.parent;
+
+  while (current) {
+    if (!operationName && "signature" in current && typeof current.id?.sv === "string") {
+      operationName = current.id.sv;
+    } else if (
+      operationName &&
+      !interfaceName &&
+      "operations" in current &&
+      typeof current.id?.sv === "string"
+    ) {
+      interfaceName = current.id.sv;
+      break;
+    }
+
+    current = current.parent;
+  }
+
+  if (!operationName) {
+    return undefined;
+  }
+
+  const namespacePath = prop.model?.namespace
+    ? buildNamespaceQualifiedName(prop.model.namespace)
+    : "";
+  const parts = [namespacePath, interfaceName, operationName].filter(
+    (part): part is string => !!part,
+  );
+  return parts.join(".");
+}
+
+function buildNamespaceQualifiedName(namespace: Namespace): string {
+  const parts: string[] = [];
+  let current: Namespace | undefined = namespace;
+  while (current && current.name) {
+    parts.unshift(current.name);
+    current = current.namespace;
+  }
+  return parts.join(".");
 }

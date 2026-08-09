@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { diffOperations } from "../src/diff/diff-operations.js";
 import { computeDiffs } from "../src/diff/diff-engine.js";
+import { diffOperations } from "../src/diff/diff-operations.js";
 import { compareTypes } from "../src/diff/diff-types.js";
-import type { ApiDiff, VersionedView } from "../src/types.js";
 import { createVersionedView, enumerateVersions } from "../src/pipeline/versions.js";
+import type { ApiDiff, VersionedView } from "../src/types.js";
 import { Tester } from "./test-host.js";
 
 describe("computeDiffs", () => {
@@ -328,7 +328,11 @@ describe("computeDiffs", () => {
       `);
 
       const { diffs } = computeDiffs(baseView, headView);
-      const typeChangedDiff = findDiff(diffs, "RequestPropertyTypeChanged", "body.properties.count");
+      const typeChangedDiff = findDiff(
+        diffs,
+        "RequestPropertyTypeChanged",
+        "body.properties.count",
+      );
 
       expect(typeChangedDiff).toBeDefined();
       expect(typeChangedDiff!.baseSourceLocation).toBeDefined();
@@ -366,6 +370,39 @@ describe("computeDiffs", () => {
       ).toBeDefined();
     });
 
+    it("uses the declaration property for query parameter origin and source location", async () => {
+      const { baseView, headView } = await compileViews(`
+        using TypeSpec.Http;
+        using TypeSpec.Versioning;
+
+        @versioned(Versions)
+        @service
+        namespace TestService;
+
+        enum Versions { v1: "2024-01-01", v2: "2025-01-01" }
+
+        model Widget { name: string; }
+
+        @route("/widgets")
+        @get
+        op listWidgets(@query filter?: string, @added(Versions.v2) @query limit?: int32): Widget[];
+      `);
+
+      const diff = findDiff(
+        computeDiffs(baseView, headView).diffs,
+        "RequestQueryParameterAdded",
+        "query.limit",
+      );
+
+      expect(diff).toBeDefined();
+      expect(diff!.baseType).toBeUndefined();
+      expect(diff!.headType?.kind).toBe("ModelProperty");
+      expect(diff!.origin?.declarationPath).toBe("TestService.listWidgets.limit");
+      expect(diff!.headType?.name).toBe("limit");
+      expect(diff!.headSourceLocation).toBeDefined();
+      expect(diff!.headSourceLocation?.file.path).toContain("main.tsp");
+    });
+
     it("detects query parameter removed", async () => {
       const { baseView, headView } = await compileViews(`
         using TypeSpec.Http;
@@ -393,6 +430,39 @@ describe("computeDiffs", () => {
       ).toBeDefined();
     });
 
+    it("uses the declaration property for query parameter removal origin and source location", async () => {
+      const { baseView, headView } = await compileViews(`
+        using TypeSpec.Http;
+        using TypeSpec.Versioning;
+
+        @versioned(Versions)
+        @service
+        namespace TestService;
+
+        enum Versions { v1: "2024-01-01", v2: "2025-01-01" }
+
+        model Widget { name: string; }
+
+        @route("/widgets")
+        @get
+        op listWidgets(@query filter?: string, @removed(Versions.v2) @query limit?: int32): Widget[];
+      `);
+
+      const diff = findDiff(
+        computeDiffs(baseView, headView).diffs,
+        "RequestQueryParameterRemoved",
+        "query.limit",
+      );
+
+      expect(diff).toBeDefined();
+      expect(diff!.baseType?.kind).toBe("ModelProperty");
+      expect(diff!.baseType?.name).toBe("limit");
+      expect(diff!.headType).toBeUndefined();
+      expect(diff!.origin?.declarationPath).toBe("TestService.listWidgets.limit");
+      expect(diff!.baseSourceLocation).toBeDefined();
+      expect(diff!.baseSourceLocation?.file.path).toContain("main.tsp");
+    });
+
     it("detects header parameter added", async () => {
       const { baseView, headView } = await compileViews(`
         using TypeSpec.Http;
@@ -414,6 +484,136 @@ describe("computeDiffs", () => {
       expect(
         findDiff(computeDiffs(baseView, headView).diffs, "RequestHeaderAdded", "headers.x-custom"),
       ).toBeDefined();
+    });
+
+    it("uses the declaration property for header parameter additions and removals", async () => {
+      const { baseView: addBaseView, headView: addHeadView } = await compileViews(`
+        using TypeSpec.Http;
+        using TypeSpec.Versioning;
+
+        @versioned(Versions)
+        @service
+        namespace TestService;
+
+        enum Versions { v1: "2024-01-01", v2: "2025-01-01" }
+
+        model Widget { name: string; }
+
+        @route("/widgets")
+        @get
+        op listWidgets(@added(Versions.v2) @header("x-custom") custom?: string): Widget[];
+      `);
+
+      const added = findDiff(
+        computeDiffs(addBaseView, addHeadView).diffs,
+        "RequestHeaderAdded",
+        "headers.x-custom",
+      );
+
+      expect(added).toBeDefined();
+      expect(added!.headType?.kind).toBe("ModelProperty");
+      expect(added!.headType?.name).toBe("custom");
+      expect(added!.origin?.declarationPath).toBe("TestService.listWidgets.custom");
+      expect(added!.headSourceLocation).toBeDefined();
+
+      const { baseView: removeBaseView, headView: removeHeadView } = await compileViews(`
+        using TypeSpec.Http;
+        using TypeSpec.Versioning;
+
+        @versioned(Versions)
+        @service
+        namespace TestService;
+
+        enum Versions { v1: "2024-01-01", v2: "2025-01-01" }
+
+        model Widget { name: string; }
+
+        @route("/widgets")
+        @get
+        op listWidgets(@removed(Versions.v2) @header("x-custom") custom?: string): Widget[];
+      `);
+
+      const removed = findDiff(
+        computeDiffs(removeBaseView, removeHeadView).diffs,
+        "RequestHeaderRemoved",
+        "headers.x-custom",
+      );
+
+      expect(removed).toBeDefined();
+      expect(removed!.baseType?.kind).toBe("ModelProperty");
+      expect(removed!.baseType?.name).toBe("custom");
+      expect(removed!.origin?.declarationPath).toBe("TestService.listWidgets.custom");
+      expect(removed!.baseSourceLocation).toBeDefined();
+    });
+
+    it("uses the declaration property for path parameter additions and removals", async () => {
+      const program = await compileProgram(`
+        namespace TestService;
+
+        model PathParameters {
+          id: string;
+          tenant: string;
+        }
+      `);
+
+      const namespace = program.getGlobalNamespaceType().namespaces.get("TestService")!;
+      const pathParameters = namespace.models.get("PathParameters")!;
+      const id = pathParameters.properties.get("id")!;
+      const tenant = pathParameters.properties.get("tenant")!;
+
+      const addedDiffs = diffOperations(
+        {
+          pathParameters: [{ options: { name: "id" }, property: { wireType: id, sourceType: id } }],
+          queryParameters: [],
+          requestHeaders: [],
+          requestParameters: {},
+          responses: [],
+        } as any,
+        {
+          pathParameters: [
+            { options: { name: "id" }, property: { wireType: id, sourceType: id } },
+            { options: { name: "tenant" }, property: { wireType: tenant, sourceType: tenant } },
+          ],
+          queryParameters: [],
+          requestHeaders: [],
+          requestParameters: {},
+          responses: [],
+        } as any,
+        { method: "GET", path: "/widgets/{id}/{tenant}" },
+      );
+
+      const added = findDiff(addedDiffs, "RequestPathParameterAdded", "path.tenant");
+      expect(added).toBeDefined();
+      expect(added!.headType).toBe(tenant);
+      expect(added!.origin?.declarationPath).toBe("TestService.PathParameters.tenant");
+      expect(added!.headSourceLocation).toBeDefined();
+
+      const removedDiffs = diffOperations(
+        {
+          pathParameters: [
+            { options: { name: "id" }, property: { wireType: id, sourceType: id } },
+            { options: { name: "tenant" }, property: { wireType: tenant, sourceType: tenant } },
+          ],
+          queryParameters: [],
+          requestHeaders: [],
+          requestParameters: {},
+          responses: [],
+        } as any,
+        {
+          pathParameters: [{ options: { name: "id" }, property: { wireType: id, sourceType: id } }],
+          queryParameters: [],
+          requestHeaders: [],
+          requestParameters: {},
+          responses: [],
+        } as any,
+        { method: "GET", path: "/widgets/{id}" },
+      );
+
+      const removed = findDiff(removedDiffs, "RequestPathParameterRemoved", "path.tenant");
+      expect(removed).toBeDefined();
+      expect(removed!.baseType).toBe(tenant);
+      expect(removed!.origin?.declarationPath).toBe("TestService.PathParameters.tenant");
+      expect(removed!.baseSourceLocation).toBeDefined();
     });
   });
 
@@ -629,13 +829,17 @@ describe("computeDiffs", () => {
       );
 
       expect(
-        diffs.some((diff) => "operation" in diff.identity && diff.identity.element.includes('"pending"')),
+        diffs.some(
+          (diff) => "operation" in diff.identity && diff.identity.element.includes('"pending"'),
+        ),
       ).toBe(true);
       expect(
         diffs.some((diff) => "operation" in diff.identity && diff.identity.element.endsWith(".2")),
       ).toBe(true);
       expect(
-        diffs.some((diff) => "operation" in diff.identity && diff.identity.element.endsWith(".true")),
+        diffs.some(
+          (diff) => "operation" in diff.identity && diff.identity.element.endsWith(".true"),
+        ),
       ).toBe(true);
     });
   });
@@ -783,7 +987,11 @@ describe("computeDiffs", () => {
       );
 
       expect(
-        findDiff(computeDiffs(baseView, headView).diffs, "RequestPropertyAdded", "body.properties.age"),
+        findDiff(
+          computeDiffs(baseView, headView).diffs,
+          "RequestPropertyAdded",
+          "body.properties.age",
+        ),
       ).toBeDefined();
     });
 
@@ -1022,7 +1230,9 @@ describe("computeDiffs", () => {
         `,
       );
 
-      expect(findDiff(computeDiffs(baseView, headView).diffs, "ResponseTypeKindChanged", "body")).toBeDefined();
+      expect(
+        findDiff(computeDiffs(baseView, headView).diffs, "ResponseTypeKindChanged", "body"),
+      ).toBeDefined();
     });
 
     it("detects response root type widened", async () => {
@@ -1843,6 +2053,58 @@ describe("computeDiffs", () => {
       );
 
       expect(findDiff(diffs, "RequestParameterMadeOptional", "query.filter")).toBeDefined();
+    });
+
+    it("uses the declaration property for parameter type changes", async () => {
+      const program = await compileProgram(`
+        namespace TestService;
+
+        model QueryShapes {
+          filterV1?: string;
+          filterV2?: int32;
+        }
+      `);
+
+      const namespace = program.getGlobalNamespaceType().namespaces.get("TestService")!;
+      const queryShapes = namespace.models.get("QueryShapes")!;
+      const filterV1 = queryShapes.properties.get("filterV1")!;
+      const filterV2 = queryShapes.properties.get("filterV2")!;
+
+      const diffs = diffOperations(
+        {
+          pathParameters: [],
+          queryParameters: [
+            {
+              options: { name: "filter" },
+              property: { wireType: filterV1, sourceType: filterV1 },
+            },
+          ],
+          requestHeaders: [],
+          requestParameters: {},
+          responses: [],
+        } as any,
+        {
+          pathParameters: [],
+          queryParameters: [
+            {
+              options: { name: "filter" },
+              property: { wireType: filterV2, sourceType: filterV2 },
+            },
+          ],
+          requestHeaders: [],
+          requestParameters: {},
+          responses: [],
+        } as any,
+        { method: "GET", path: "/widgets" },
+      );
+
+      const diff = findDiff(diffs, "RequestTypeChanged", "query.filter");
+      expect(diff).toBeDefined();
+      expect(diff!.baseType).toBe(filterV1);
+      expect(diff!.headType).toBe(filterV2);
+      expect(diff!.origin?.declarationPath).toBe("TestService.QueryShapes.filterV2");
+      expect(diff!.baseSourceLocation).toBeDefined();
+      expect(diff!.headSourceLocation).toBeDefined();
     });
 
     it("detects request parameters made required", async () => {
