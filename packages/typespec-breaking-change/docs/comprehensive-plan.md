@@ -1,68 +1,46 @@
 # Comprehensive Plan: Next Steps for @azure-tools/typespec-breaking-change
 
 **Created:** 2026-08-04
-**Updated:** 2026-08-07
+**Updated:** 2026-08-08
 **Status:** Active planning document
 
 ## Executive Summary
 
-The prototype is functional with 400 tests, real-world performance validation, and 4 demo PRs.
+The prototype is functional with 420 tests, real-world performance validation, and multiple demo PRs.
 This document captures the path from prototype to production-ready tool, organized as:
-(A) resolved questions (design settled, implementation may remain), (B) genuinely open questions, (C) prioritized work items.
+Completed Work, (A) resolved designs not yet implemented, (B) genuinely open questions, and (C) prioritized work items.
+
+## Completed Work
+
+| Item | Description | Evidence |
+|------|-------------|----------|
+| A1 | Performance at Scale | Validated on Network (739 ops, 7.0s) and Fleet (13 versions, 8.4s) |
+| A2 | Graph Walker and Cycle Detection | 5 recursive model tests; Network runs without stack overflow |
+| A3 | Operation Identity Stability | 11 identity tests; Network spec correctly matches 739 operations |
+| A4 | Resource Model Directional Split | Scenarios 10-12 plus 9 resource merge + suppression tests |
+| A5 | Cross-Compilation Suppression Identity | PR #5 demo and suppression-identity tests |
+| A6 | Phase A → Phase B Interaction | `src/orchestrator.ts` lines 157-171; design overview §8.5 |
+| A7 | TypeSpec Library Registration | `docs/prototype-dev-guide.md`; verified by PR #5 |
+| A8 | Suppression Mechanism: Decorators | `src/suppression/decorators.ts`, `src/suppression/suppression.ts`, `lib/decorators.tsp` |
+| A11 | Narrowing/Widening Classification | Design overview §5 |
+| A13 | Catastrophic Change Handling | Design overview §6.2 worked example for removed operations |
+| B2 | Source Tracing Completeness and Unification | `src/pipeline/resolve-location.ts`; 100% HEAD/base tracing on Network and Fleet |
+| B4 | Output Format Documentation | `docs/output-formats.md` |
+| B5 | ARM Template Type Parameter Tracing | `src/diff/origin.ts`; Network 56% → 92%, Fleet 88.6% |
+| 1.2 | Unified source tracing fallbacks | Completed in PR #4 (`src/pipeline/resolve-location.ts`) |
+| 1.3 | ARM template type parameter tracing | Completed in PR #4 (`src/diff/origin.ts`) |
+| 3.3 | Source link resolution | Completed in test coverage push |
+| 3.4 | Resource merge edge cases | Completed in `fleet/improvements` |
+| 3.9 | Large-spec source tracing validation | 100% HEAD/base tracing on Network/Fleet; AppConfiguration 0 findings |
+| 4.1 | Output format documentation | `docs/output-formats.md` |
+| 4.2 | Implementation developer guide | `docs/prototype-dev-guide.md`, `docs/implementation-guide.md` |
+| 4.3 | Source tracing deep-dive documentation | `docs/source-tracing-deep-dive.md`, `docs/source-tracing-evaluation.md` |
 
 ---
 
-## Part A: Resolved Questions
+## Part A: Resolved Designs (Not Yet Implemented)
 
-These are answered by design documents, prototype evidence, or both. Items marked "NOT YET IMPLEMENTED" have resolved designs but need code.
-
-### A1. Performance at Scale ✅
-
-**Answer:** Analysis completes well within CI budget (7x margin on largest specs).
-- Network: 739 operations, 2 versions, 1 pair → 7.0s
-- Fleet: 42 operations, 13 versions, 8 pairs → 8.4s
-- Bottleneck: version mutators (50%) + diff engine (45%)
-- No parallelization needed at current scale
-
-**Evidence:** `PROTOTYPE-EVALUATION.md` Q8, `integration-real-spec.test.ts`
-
-### A2. Graph Walker and Cycle Detection ✅
-
-**Answer:** Visited-set with type identity prevents infinite loops. Works on deeply nested ARM models.
-**Evidence:** 5 dedicated recursive model tests, Network spec (739 ops) runs without stack overflow.
-
-### A3. Operation Identity Stability ✅
-
-**Answer:** `{method, normalizedPath}` is stable across refactors. Path normalization replaces parameter names with `{}`.
-**Evidence:** Network spec correctly matches 739 operations. 11 identity tests.
-
-### A4. Resource Model Directional Split ✅
-
-**Answer:** Request/Response diffs merge into Resource findings post-comparison. Pipeline: dedup → merge → collapse → suppress.
-**Evidence:** Scenarios 10-12 in orchestrator tests, all 4 demo PRs.
-**Update (fleet/improvements):** Fixed bug where `ResourcePropertyMadeOptional` inherited request-side `ignore` severity. Added 9 resource merge + suppression scenario tests covering all diff kinds. `validDiffKinds` now includes all `Resource*` kinds so suppressions match correctly.
-
-### A5. Cross-Compilation Suppression Identity ✅
-
-**Answer:** `scanUnversionedSuppressions` fallback matches by `(namespace.model.property, diffKind)` when object identity fails across compilations.
-**Evidence:** PR #5 demo, suppression-identity tests.
-
-### A6. Phase A → Phase B Interaction ✅
-
-**Answer:** Changed versions in Phase A feed into Phase B candidates. Only new or changed versions are checked for cross-version breaking changes. Already implemented and documented in design overview §8.5.
-**Evidence:** `orchestrator.ts` lines 157-171, design overview §8.5.
-**Residual:** Add explicit unit tests for: unchanged version excluded, changed version included, new version included.
-
-### A7. TypeSpec Library Registration ✅
-
-**Answer:** Requires `exports` in package.json + `using Azure.BreakingChange;` in consumer specs.
-**Evidence:** Documented in `docs/prototype-dev-guide.md`, verified by PR #5.
-
-### A8. Suppression Mechanism: Decorators ✅
-
-**Answer:** The design resolves this as custom decorators (`@approvedBreakingChange`, `@approvedUnversionedChange`). The entire suppression system (design overview §6, 500+ lines) is built on the decorator model with direct/parent placement, `path:` targeting, `since:` version scoping, stale approval detection, and new/existing suppression comparison.
-**Evidence:** Design overview §6.1-6.6, implemented in `src/suppression/decorators.ts`, `src/suppression/suppression.ts`, `lib/decorators.tsp`.
-**Residual open question:** Which package hosts the decorators? See B1.
+These designs are settled in the design documents, but still need code.
 
 ### A9. New vs Existing Suppression Classification ✅ (NOT YET IMPLEMENTED)
 
@@ -87,17 +65,6 @@ Identity matching uses declaration identity for direct placement, ancestor ident
 **Evidence:** Design overview §6.6, lines 862-917, with worked example (legacyStatus removed → re-added → removed again, resolved with two `since:`-scoped decorators).
 **Implementation status:** NOT YET IMPLEMENTED. Phase 5 item (5.6). Note: ambiguity detection (multi-baseline matching) is non-trivial implementation work.
 
-### A11. Narrowing/Widening Classification ✅
-
-**Answer:** Design overview §5 fully specifies the directional classification:
-- Request narrowing → Error; Response widening → Error
-- Request widening → Ignore; Response narrowing → Ignore
-- Format changes → Error regardless of direction
-- Per-type rules: Scalars (format restrictiveness), Enums (closed sets), Unions (open/closed), Arrays/Records (recursive item/value type), Models (recursive per-property)
-
-**Evidence:** Design overview §5, lines 285-302.
-**Residual gaps:** (a) Test coverage verifying implementation matches this spec; (b) Debug/verbose logging to surface "ignore" findings for transparency. See Phase 2.
-
 ### A12. Stale Approval Detection ✅ (NOT YET IMPLEMENTED)
 
 **Answer:** Design overview §6.5 fully specifies:
@@ -107,12 +74,6 @@ Identity matching uses declaration identity for direct placement, ancestor ident
 
 **Evidence:** Design overview §6.5, lines 834-861.
 **Implementation status:** NOT YET IMPLEMENTED. Phase 5 item (5.5).
-
-### A13. Catastrophic Change Handling ✅
-
-**Answer:** `OperationRemoved` is a defined DiffKind (design overview §5, Operation-Level Rules). Suppression for removed operations uses parent placement on the containing interface/namespace with `path:` set to the wire identity (e.g., `DELETE /subscriptions/{}/resourceGroups/{}/providers/...`).
-**Evidence:** Design overview §6.2, lines 505-524 (worked example with removed operation on interface).
-**Residual:** Testing is minimal — need to add tests for whole-operation removal, interface removal, and model removal. Phase 1 item (1.4).
 
 ---
 
@@ -130,28 +91,6 @@ These have NO resolved design and genuinely need investigation or decisions.
 
 **Action:** Consult with TypeSpec team. Decision needed before v1 GA.
 
-### B2. Source Tracing Completeness and Unification ✅ RESOLVED
-
-**Problem:** Source tracing works for common patterns but needs to be extended and unified.
-
-**Resolution (implemented in PR #4 and completed in PR #5):**
-- 6-level fallback chain implemented in `src/pipeline/resolve-location.ts`:
-  1. headSourceLocation (direct) — set by resolveHeadSourceLocations
-  2. origin.sourceLocation — named declaration via sourceProperty/template chain
-  3. baseSourceLocation — from base compilation
-  4. parentModel — type/sourceProperty/parent container
-  5. operation — operation declaration
-  6. namespace — service namespace + elementPath
-- Scoped namespace lookup: only finds files in the service namespace's directory tree
-- `sourceTraceLevel` field added for debuggability (direct, ancestor, operation, namespace)
-- Parameter declaration tracing uses `getParameterDeclarationType()` so query/header/path diffs keep declaration-backed `ModelProperty` anchors
-- Template tracing via `sourceModels` + `templateMapper.args` (see B5)
-- `resolveBaseSourceLocations()` now mirrors the HEAD repair algorithm for base-side declarations
-- Real-spec evaluation: HEAD origin resolution 100% on Network/Fleet/AppConfiguration; base tracing 100% on Network (55/55) and Fleet (126/126)
-
-**Evidence:** `src/pipeline/resolve-location.ts`, `docs/source-tracing-deep-dive.md`, `docs/source-tracing-gap-analysis.md`, `docs/base-source-tracing-plan.md`, design overview §8.2 updated.
-**Follow-up:** Broaden real-spec coverage in Phase 5.1.
-
 ### B3. Wildcard and Blanket Suppressions
 
 **Problem:** Should we allow:
@@ -168,34 +107,6 @@ These have NO resolved design and genuinely need investigation or decisions.
 - Consider flagging "wide" suppressions in a separate report section
 
 **Action:** Defer wildcard paths to post-v1. Validate kind-only behavior. Evaluate report flagging for wide suppressions.
-
-### B4. Output Format Documentation ✅ RESOLVED
-
-**Problem:** The JSON and Markdown output formats need formal documentation for the specs team and CI integration authors.
-
-**Resolution (implemented in `fleet/improvements`):**
-- Created `docs/output-formats.md` with:
-  - JSON schema for structured output (finding objects, metadata fields)
-  - Markdown format with annotated examples (grouped by phase/version pair)
-  - CI integration contract (exit codes, output paths, environment variables)
-  - Source link format documentation
-
-**Evidence:** `docs/output-formats.md`.
-
-### B5. ARM Template Type Parameter Tracing ✅ RESOLVED
-
-**Problem:** Origin resolution gap on properties flowing through ARM template type parameters (`TrackedResource<T>`, `StandardResourceOperations`).
-
-**Resolution (implemented in `fleet/improvements`):**
-- Investigated TypeSpec compiler internals: `sourceProperty` chain does NOT cross template boundaries
-- However, `model.sourceModels` array preserves links to template base types
-- `model.templateMapper.args` contains the actual type arguments passed to templates
-- Extended `resolveModelPropertyOrigin()` in `src/diff/origin.ts` with two new fallback paths:
-  1. Walk `sourceModels` to find properties in template base types
-  2. Walk `templateMapper.args` to find the original user-defined type argument
-- Results: Network origin resolution 56% → 92%, Fleet 88.6%
-
-**Evidence:** `src/diff/origin.ts`, `docs/source-tracing-evaluation.md`, design overview §8.2 updated with template tracing subsection.
 
 ### B6. Linter Rule Integration and IDE Feedback
 
@@ -285,10 +196,10 @@ Implement resolved designs and validate known gaps.
 | 2.2 | Phase-aware zero-findings messages (console, markdown, JSON) | Reporting plan | 0.5 day |
 | 2.3 | Version comparison summary in all reporters (`VersionComparisonSummary`) | Reporting plan | 1 day |
 | 2.4 | Collapsed version comparisons section in markdown output | Reporting plan | 0.5 day |
-| 2.5 | Structured debug logging (analysis decisions, skipped items) | A11 | 2 days |
-| 2.6 | Split log levels: standard (CI output) vs debug (diagnostics) | — | 1 day |
-| 2.7 | Verbose mode showing all findings including "ignore" | A11 | 1 day |
-| 2.8 | Integration with GitHub Actions debug logging | — | 0.5 day |
+| 2.5 | Structured debug logging — log analysis decisions (which versions compared, which findings produced, why suppressed/ignored). Example: `[DEBUG] Comparing v2021-11-01 → v2025-01-01 for Microsoft.Network` | A11 | 2 days |
+| 2.6 | Split log levels — `standard` (CI-visible progress) vs `debug` (diagnostic detail) vs `verbose` (all findings including ignored) | — | 1 day |
+| 2.7 | Verbose mode — show narrowing/widening `ignore` findings so authors can verify the tool saw their changes | A11 | 1 day |
+| 2.8 | GitHub Actions debug integration — when `ACTIONS_STEP_DEBUG=true`, emit debug-level logs automatically | — | 0.5 day |
 
 Detailed reporting improvements plan is in session artifact `reporting-improvements-plan.md`. Key changes:
 - `AnalysisOptions.log` callback for progress lines in CI
@@ -297,6 +208,8 @@ Detailed reporting improvements plan is in session artifact `reporting-improveme
 - Console: `✅ No cross-version breaking changes found (N version pairs compared)`
 - Markdown: collapsed `<details>` section with version comparison table
 - JSON: `versionComparisons` array in output
+- Logging levels: `standard`, `debug`, and `verbose`
+- GitHub Actions auto-debug behavior when `ACTIONS_STEP_DEBUG=true`
 
 ### Phase 3: Test Coverage Push (1-2 weeks)
 
@@ -364,6 +277,35 @@ See `typespec-breaking-change-validation-strategy.md` for full details.
 
 ---
 
+## Prioritized Next Steps
+
+The following is the recommended order of work, balancing dependencies and value delivery:
+
+### Tier 1: Core Suppression Logic (next sprint)
+1. **A9: New-vs-existing suppression classification** (Phase 1.1) — Blocks CI label semantics and reviewer workflow. See `docs/a9-a10-tdd-plan.md`.
+2. **Phase 1.4: Catastrophic change detection tests** — Low-effort validation of existing design.
+3. **Phase 1.5: Narrowing/widening verification** — Ensures §5 rules are correctly implemented.
+
+### Tier 2: Reporting and Observability (following sprint)
+4. **Phase 2.1-2.4: Reporting improvements** — Progress logging, phase-aware messages, version comparison summary.
+5. **Phase 2.5-2.8: Debug logging and tracing** — Critical for debugging suppression classification issues.
+
+### Tier 3: Test Coverage and Hardening
+6. **Phase 3.8: E2E scenarios (25 scenarios)** — Comprehensive integration coverage.
+7. **Phase 3.10: Mixed new + existing suppression scenarios** — Validates A9 end-to-end.
+8. **Phase 1.8: Phase A with real base/head programs** — Beyond demo PRs.
+
+### Tier 4: Advanced Suppression Features
+9. **A10: Version scoping with `since:`** (Phase 5.6) — Depends on A9 being solid. See `docs/a9-a10-tdd-plan.md`.
+10. **A12: Stale approval detection** (Phase 5.5) — Natural extension after A9.
+
+### Tier 5: Production Readiness
+11. **Phase 5.1: Real-spec validation (5+ ARM, 3+ data-plane)**
+12. **Phase 5.7: Git-revision-based analysis**
+13. **Phase 6: OAD Parity and Side-by-Side**
+
+---
+
 ## Part D: Decision Log
 
 | Decision | Options | Status | Outcome |
@@ -382,7 +324,7 @@ See `typespec-breaking-change-validation-strategy.md` for full details.
 | Base source tracing | Mirror HEAD algorithm | **Resolved & Implemented** | `resolveBaseSourceLocations()` with 100% on all specs |
 | Output format documentation | JSON schema + Markdown spec | **Resolved & Implemented** | See B4 |
 | Source reorg | Flat files / logical subdirectories | **Resolved & Implemented** | cli/, diff/, pipeline/, suppression/, reporting/ |
-| Source trace target | 100% on N specs / best-effort with fallbacks | **Open** | — |
+| Source trace target | 100% on all evaluated specs | **Resolved & Implemented** | 6-level fallback + template tracing achieves 100% on Network/Fleet |
 | APIs to upstream to core | Operation identity / version utils / none | **Open** | — |
 | Linter rule integration | CLI only / CLI + linter / CLI + LSP | **Open** | — |
 | Git revision support | Path only / commitish / sparse checkout | **Open** | — |
@@ -410,6 +352,7 @@ See `typespec-breaking-change-validation-strategy.md` for full details.
 | `rfcs/breaking-changes/typespec-breaking-change-test-coverage.md` | Unit/integration test scenarios | Updated 2026-08-04 |
 | `PROTOTYPE-EVALUATION.md` | Prototype Q&A with benchmarks, open questions P1-P5 | Current |
 | `docs/prototype-dev-guide.md` | Deployment runbook, pitfalls, environment | Created 2026-08-04 |
+| `docs/a9-a10-tdd-plan.md` | TDD plan for A9 (suppression classification) and A10 (version scoping) | Created 2026-08-08 |
 | `docs/violations-reference.md` | DiffKind reference for spec authors | Current |
 | `docs/presentation-notes.md` | Slide deck talking points | Current |
 | This document | Comprehensive next-steps plan | Active |
@@ -418,14 +361,45 @@ See `typespec-breaking-change-validation-strategy.md` for full details.
 
 | Source | Item | Integrated As |
 |--------|------|---------------|
+| Design overview §5 | Narrowing/widening classification | A11 (resolved), Phase 1.5 |
+| Design overview §6.2 | Removed operation suppression | A13 (resolved), Phase 1.4 |
 | Design overview §6.3 | New/existing suppression comparison | A9 (resolved), Phase 1.1 |
 | Design overview §6.5 | Stale approval detection | A12 (resolved), Phase 5.5 |
 | Design overview §6.6 | Version scoping with `since:` | A10 (resolved), Phase 5.6 |
+| Design overview §7.2 | Scalar transition table scope | B10 (open) |
+| Design overview §7.3 | Wildcard suppression paths | B3 (deferred to post-v1) |
+| `PROTOTYPE-EVALUATION.md` P1 | ARM template type parameter tracing | B5, Phase 1.3 |
+| `PROTOTYPE-EVALUATION.md` P2 | Linter rule integration | B6, Phase 5.8 |
+| `PROTOTYPE-EVALUATION.md` P3 | Multi-service specs | B9, Phase 5.3 |
+| `PROTOTYPE-EVALUATION.md` P5 | Phase A with real base/head | Phase 1.8 |
+| `presentation-notes.md` | Git-revision-based analysis | B8, Phase 5.7 |
+| `source-tracing-analysis.md` | AST node identity for dedup | A4 (resolved) |
 | Session `reporting-improvements-plan.md` | Progress logging, phase-aware messages, version comparisons | Phase 2.1-2.4 |
+| User observations (2026-08-04) | New vs existing suppressions | A9, Phase 1.1 |
+| User observations (2026-08-04) | Decorator hosting question | B1 |
+| User observations (2026-08-04) | Source tracing unified algorithm | B2, Phase 1.2 |
+| User observations (2026-08-04) | Catastrophic breaking changes | A13, Phase 1.4 |
+| User observations (2026-08-04) | Wildcard/blanket suppressions | B3 |
+| User observations (2026-08-04) | Debuggability / logging levels | Phase 2 |
+| User observations (2026-08-04) | Large-spec testing | Phase 3.9, Phase 5.1 |
+| User observations (2026-08-04) | Output format documentation | B4, Phase 4 |
+| User observations (2026-08-04) | Code documentation | Phase 4.2 |
+| User observations (2026-08-04) | APIs to upstream to core | B7, Phase 4.5 |
 
 ---
 
 ## Appendix: Change Log
+
+### 2026-08-08 — PR `fix/source-trace-100` (PR #5, continued)
+
+**Work completed:**
+| Category | Item |
+|----------|------|
+| **Testing** | Replaced fixture-dependent scenario tests with ARM inline fixtures using TesterWithArm |
+| **Dependencies** | Added `@azure-tools/typespec-azure-core` and `@azure-tools/typespec-azure-resource-manager` as devDependencies |
+| **Testing** | All 420 tests pass, 0 skipped (previously 2 skipped) |
+| **Planning** | Created `docs/a9-a10-tdd-plan.md` — TDD plan for suppression classification and version scoping |
+| **Docs** | Restructured comprehensive plan with Completed Work section and Prioritized Next Steps |
 
 ### 2026-08-08 — PR `fix/source-trace-100` (PR #5)
 
@@ -472,23 +446,3 @@ See `typespec-breaking-change-validation-strategy.md` for full details.
 - Phase 1.2, 1.3 → Done
 - Phase 3.3, 3.4, 3.9 → Done
 - Phase 4.1, 4.2, 4.3 → Done
-| Design overview §5 | Narrowing/widening classification | A11 (resolved), Phase 1.5 |
-| Design overview §6.2 | Removed operation suppression | A13 (resolved), Phase 1.4 |
-| Design overview §7.2 | Scalar transition table scope | B10 (open) |
-| Design overview §7.3 | Wildcard suppression paths | B3 (deferred to post-v1) |
-| `PROTOTYPE-EVALUATION.md` P1 | ARM template type parameter tracing | B5, Phase 1.3 |
-| `PROTOTYPE-EVALUATION.md` P2 | Linter rule integration | B6, Phase 5.8 |
-| `PROTOTYPE-EVALUATION.md` P3 | Multi-service specs | B9, Phase 5.3 |
-| `PROTOTYPE-EVALUATION.md` P5 | Phase A with real base/head | Phase 1.8 |
-| `presentation-notes.md` | Git-revision-based analysis | B8, Phase 5.7 |
-| `source-tracing-analysis.md` | AST node identity for dedup | A4 (resolved) |
-| User observations (2026-08-04) | New vs existing suppressions | A9, Phase 1.1 |
-| User observations (2026-08-04) | Decorator hosting question | B1 |
-| User observations (2026-08-04) | Source tracing unified algorithm | B2, Phase 1.2 |
-| User observations (2026-08-04) | Catastrophic breaking changes | A13, Phase 1.4 |
-| User observations (2026-08-04) | Wildcard/blanket suppressions | B3 |
-| User observations (2026-08-04) | Debuggability / logging levels | Phase 2 |
-| User observations (2026-08-04) | Large-spec testing | Phase 3.9, Phase 5.1 |
-| User observations (2026-08-04) | Output format documentation | B4, Phase 4 |
-| User observations (2026-08-04) | Code documentation | Phase 4.2 |
-| User observations (2026-08-04) | APIs to upstream to core | B7, Phase 4.5 |

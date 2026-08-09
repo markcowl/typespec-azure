@@ -85,5 +85,6 @@ HEAD source tracing answers "where should the developer look to fix this?" Base 
 
 - No known functional gap remains for base source tracing
 - Remaining follow-up is broader evaluation coverage on additional specs, not new tracing mechanics
+- For suppression classification and version scoping implementation plans, see `docs/a9-a10-tdd-plan.md`.
 
 See `docs/base-source-tracing-plan.md` for the historical TDD plan that led to the implementation.
