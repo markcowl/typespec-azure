@@ -1,5 +1,7 @@
 import type { Namespace, Program } from "@typespec/compiler";
 import { computeDiffs } from "../diff/diff-engine.js";
+import { detectAmbiguousSuppressions } from "../suppression/ambiguity.js";
+import { compareSuppressions } from "../suppression/classification.js";
 import { applySuppressions } from "../suppression/suppression.js";
 import type {
   AnalysisResult,
@@ -90,7 +92,10 @@ export function analyzeProgram(program: Program, options?: AnalysisOptions): Ana
   const deduped = collapsePhaseADuplicates(merged);
 
   const suppressStart = Date.now();
-  const findings = applySuppressions(deduped, program);
+  let findings = applySuppressions(deduped, program);
+
+  // Detect ambiguous unscoped suppressions (A2: version scoping)
+  findings = detectAmbiguousSuppressions(findings);
   timing.suppressMs += Date.now() - suppressStart;
 
   resolveBaseSourceLocations(findings, program);
@@ -234,15 +239,20 @@ export function analyzeBaseAndHead(
   const merged = mergeRequestResponseToResource(dedupedFindings);
   const deduped = collapsePhaseADuplicates(merged);
 
+  // Build suppression comparison between base and head programs
+  const suppressionComparison = compareSuppressions(baseProgram, headProgram);
+
   const suppressStart = Date.now();
-  const findings = applySuppressions(deduped, headProgram);
+  let findings = applySuppressions(deduped, headProgram);
+
+  // Detect ambiguous unscoped suppressions (A2: version scoping)
+  findings = detectAmbiguousSuppressions(findings);
+
+  // Enrich suppressed findings with classification from the comparison
+  findings = enrichWithClassification(findings, suppressionComparison, headProgram);
   timing.suppressMs += Date.now() - suppressStart;
 
   resolveBaseSourceLocations(findings, baseProgram);
-  // Resolve head source locations for cross-compilation findings.
-  // Looks up types by name in the unmutated head program to determine
-  // whether a type truly doesn't exist in head (link to parent) vs
-  // exists but is projected out (link to the type itself).
   resolveHeadSourceLocations(findings, headProgram);
 
   timing.totalMs = Date.now() - totalStart;
@@ -254,7 +264,7 @@ export function analyzeBaseAndHead(
     options,
     hasStableVersion,
   );
-  return { findings, timing, summary };
+  return { findings, timing, summary, suppressionComparison };
 }
 
 function analyzePair(
@@ -275,6 +285,66 @@ function analyzePair(
   timing.classifyMs += Date.now() - classifyStart;
 
   return findings;
+}
+
+/**
+ * Enrich suppressed findings with their suppression classification.
+ * Maps from the suppression comparison result to each finding's suppressionClassification.
+ */
+function enrichWithClassification(
+  findings: Finding[],
+  comparison: import("../suppression/classification.js").SuppressionComparisonResult,
+  _headProgram: Program,
+): Finding[] {
+  if (comparison.classifications.length === 0) return findings;
+
+  // Build a quick lookup: for each finding that's suppressed, try to find a matching
+  // classification based on the suppression's anchor/kind/path combination.
+  // Since suppressed findings don't carry a direct reference to which normalized record
+  // suppressed them, we match by finding's diff kind and decorator type.
+  return findings.map((finding) => {
+    if (!finding.suppressed) return finding;
+
+    // Look for a matching classification in the comparison
+    const matchingClassification = findMatchingClassification(finding, comparison);
+    if (matchingClassification) {
+      return {
+        ...finding,
+        suppressionClassification: matchingClassification,
+      };
+    }
+    return finding;
+  });
+}
+
+/**
+ * Find the classification for a suppression that matches a given finding.
+ */
+function findMatchingClassification(
+  finding: Finding,
+  comparison: import("../suppression/classification.js").SuppressionComparisonResult,
+): "new" | "existing" | "modified" | undefined {
+  const diffKind = finding.diff.kind;
+  const decorator =
+    finding.phase === "same-version" ? "approvedUnversionedChange" : "approvedBreakingChange";
+
+  for (const c of comparison.classifications) {
+    if (c.classification === "removed") continue;
+    const head = c.head!;
+    if (head.decorator !== decorator) continue;
+    // Match by kind (if specified in the suppression)
+    if (head.kind && head.kind !== diffKind) {
+      // Also check Resource* -> Request*/Response* mapping
+      if (diffKind.startsWith("Resource")) {
+        const suffix = diffKind.slice("Resource".length);
+        if (head.kind !== `Request${suffix}` && head.kind !== `Response${suffix}`) continue;
+      } else {
+        continue;
+      }
+    }
+    return c.classification as "new" | "existing" | "modified";
+  }
+  return undefined;
 }
 
 function timeVersionedView(

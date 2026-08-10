@@ -41,6 +41,19 @@ export * from "./reporting/reporter-json.js";
 export * from "./reporting/reporter-markdown.js";
 export * from "./suppression/suppression-guidance.js";
 export * from "./suppression/suppression.js";
+export {
+  buildSuppressionInventory,
+  suppressionIdentityKey,
+  type NormalizedSuppressionRecord,
+} from "./suppression/inventory.js";
+export {
+  compareSuppressions,
+  compareInventories,
+  type ClassifiedSuppression,
+  type SuppressionClassificationKind,
+  type SuppressionComparisonResult,
+} from "./suppression/classification.js";
+export { detectAmbiguousSuppressions, type AmbiguityResult } from "./suppression/ambiguity.js";
 export { isOperationIdentity, isServiceIdentity } from "./types.js";
 export type {
   AnalysisResult,

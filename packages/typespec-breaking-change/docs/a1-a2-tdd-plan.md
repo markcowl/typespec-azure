@@ -1,7 +1,7 @@
 # A1/A2 TDD Implementation Plan: Suppression Classification and Version Scoping
 
 **Created:** 2026-08-08  
-**Status:** Ready for implementation
+**Status:** Implemented (PR #7)
 
 ## Overview
 

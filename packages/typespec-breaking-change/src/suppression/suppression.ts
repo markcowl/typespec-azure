@@ -60,6 +60,7 @@ export function applySuppressions(findings: Finding[], program: Program): Findin
       ...finding,
       suppressed: true,
       suppressionReason: match.suppression.reason,
+      suppressionIsScoped: match.suppression.version !== undefined,
     };
   });
 }
@@ -120,10 +121,12 @@ function matchesKind(suppression: ResolvedSuppression, finding: Finding): boolea
 }
 
 function matchesVersion(suppression: ResolvedSuppression, finding: Finding): boolean {
-  return (
-    suppression.suppression.version === undefined ||
-    finding.versionPair.headVersion >= suppression.suppression.version
-  );
+  if (suppression.suppression.version === undefined) {
+    // Unscoped — eligible for any version pair (ambiguity checked post-hoc)
+    return true;
+  }
+  // Since-scoped: match only the exact head version
+  return finding.versionPair.headVersion === suppression.suppression.version;
 }
 
 /**

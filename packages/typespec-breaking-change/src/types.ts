@@ -210,6 +210,27 @@ export interface Finding {
   /** If suppressed, the reason provided in the suppression decorator. */
   suppressionReason?: string;
 
+  /**
+   * Classification of the suppression that covers this finding.
+   * Only present when base/head comparison has been performed.
+   * - "new": suppression was added in this PR
+   * - "existing": suppression existed on the base branch
+   * - "modified": suppression metadata changed in this PR
+   */
+  suppressionClassification?: "new" | "existing" | "modified";
+
+  /**
+   * Whether this finding is unsuppressed due to ambiguity detection.
+   * Set when an unscoped approval matches 2+ version transitions.
+   */
+  ambiguousSuppressionDetected?: boolean;
+
+  /**
+   * Whether the suppression that matched this finding was version-scoped.
+   * Used by ambiguity detection to avoid flagging explicitly-scoped approvals.
+   */
+  suppressionIsScoped?: boolean;
+
   /** Source service namespace for namespace-level location fallback. */
   serviceNamespace?: Namespace;
 
@@ -276,6 +297,8 @@ export interface AnalysisResult {
   timing: TimingInfo;
   /** Summary of what was analyzed. */
   summary: AnalysisSummary;
+  /** Suppression comparison result (only present in base/head analysis). */
+  suppressionComparison?: import("./suppression/classification.js").SuppressionComparisonResult;
 }
 
 /**
