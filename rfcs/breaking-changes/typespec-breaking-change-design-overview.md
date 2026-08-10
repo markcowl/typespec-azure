@@ -435,10 +435,8 @@ Example:
 ```typespec
 model BarProperties {
   @approvedBreakingChange(
-    "ResponseTypeWidened",
-    {
-      reason: "Widening count to int64 for large resource counts",
-    }
+    "Widening count to int64 for large resource counts",
+    #{ kind: "ResponseTypeWidened" }
   )
   @typeChangedFrom(Versions.v2024_01_01, int32)
   count: int64;
@@ -482,10 +480,10 @@ When a property is removed, the approval is placed on the model that still survi
 
 ```typespec
 @approvedBreakingChange(
-  "ResponsePropertyRemoved",
-  {
+  "Removed after deprecation period; field was never populated by the service",
+  #{
+    kind: "ResponsePropertyRemoved",
     path: "properties.legacyStatus",
-    reason: "Removed after deprecation period; field was never populated by the service",
   }
 )
 model BarProperties {
@@ -503,10 +501,10 @@ When an operation is removed, the approval is placed on the containing interface
 
 ```typespec
 @approvedBreakingChange(
-  "OperationRemoved",
-  {
+  "Delete was retired in favor of soft-delete semantics",
+  #{
+    kind: "OperationRemoved",
     path: "DELETE /subscriptions/{}/resourceGroups/{}/providers/Microsoft.Foo/bars/{}",
-    reason: "Delete was retired in favor of soft-delete semantics",
   }
 )
 interface Bars {
@@ -525,10 +523,10 @@ When the change is on inline response metadata, the approval is placed on the op
 
 ```typespec
 @approvedBreakingChange(
-  "ResponseHeaderRemoved",
-  {
+  "Custom correlation header replaced by standard tracing headers",
+  #{
+    kind: "ResponseHeaderRemoved",
     path: "responses.200.headers.X-Custom-Id",
-    reason: "Custom correlation header replaced by standard tracing headers",
   }
 )
 op getBar(@path barName: string): {
@@ -544,10 +542,10 @@ When HTTP metadata is part of a shared model, the approval is placed on that mod
 
 ```typespec
 @approvedBreakingChange(
-  "ResponseHeaderRemoved",
-  {
+  "Custom correlation header replaced by standard tracing headers",
+  #{
+    kind: "ResponseHeaderRemoved",
     path: "properties.xCustomId",
-    reason: "Custom correlation header replaced by standard tracing headers",
   }
 )
 model Bar {
@@ -637,13 +635,12 @@ The classification rules are:
 Identity matching uses the same model the suppression system already relies on:
 
 - direct declaration identity for direct placement
-- ancestor identity plus `path` for parent placement
+- ancestor identity plus `path` plus `DiffKind` for parent placement
 
-Metadata comparison includes the fields that matter for review, especially:
+The identity key for matching is: **(decorator family, declaration/ancestor identity, placement type, DiffKind, path)**. Two suppressions on the same node with different `DiffKind` values are independent approvals.
 
-- decorator kind
-- `DiffKind`
-- `path`
+Metadata comparison (for detecting MODIFIED status) includes:
+
 - `since`
 - `reason`
 
@@ -693,14 +690,14 @@ Phase B reports use the same structured format as Phase A, with unsuppressed and
 
 | Kind | Identity | Suppression |
 |------|----------|-------------|
-| [ResourcePropertyRemoved](link) | [DELETE .../bars/{}](link) `body.properties.legacyStatus` | `@approvedBreakingChange("ResourcePropertyRemoved", { path: "properties.legacyStatus", reason: "<your reason>" })` |
+| [ResourcePropertyRemoved](link) | [DELETE .../bars/{}](link) `body.properties.legacyStatus` | `@approvedBreakingChange("<your reason>", #{ kind: "ResourcePropertyRemoved", path: "properties.legacyStatus" })` |
 
 <details>
 <summary>Suppression examples</summary>
 
 **ResourcePropertyRemoved (legacyStatus):**
 ```diff
-+ @approvedBreakingChange("ResourcePropertyRemoved", { path: "properties.legacyStatus", reason: "<your reason>" })
++ @approvedBreakingChange("<your reason>", #{ kind: "ResourcePropertyRemoved", path: "properties.legacyStatus" })
   model BarProperties {
 ```
 
@@ -773,14 +770,14 @@ Phase A reports use the same structured format as Phase B, with unsuppressed and
 
 | Kind | Identity | Suppression |
 |------|----------|-------------|
-| [ResourcePropertyRemoved](link) | [DELETE .../widgets/{}](link) `body.properties.city` | `@approvedUnversionedChange("ResourcePropertyRemoved", { path: "city", reason: "<your reason>" })` |
+| [ResourcePropertyRemoved](link) | [DELETE .../widgets/{}](link) `body.properties.city` | `@approvedUnversionedChange("<your reason>", #{ kind: "ResourcePropertyRemoved", path: "city" })` |
 
 <details>
 <summary>Suppression examples</summary>
 
 **ResourcePropertyRemoved (city):**
 ```diff
-+ @approvedUnversionedChange("ResourcePropertyRemoved", { path: "city", reason: "<your reason>" })
++ @approvedUnversionedChange("<your reason>", #{ kind: "ResourcePropertyRemoved", path: "city" })
   model WidgetProperties {
 ```
 
@@ -892,19 +889,19 @@ Version-scoped replacements look like this:
 
 ```typespec
 @approvedBreakingChange(
-  "ResponsePropertyRemoved",
-  {
+  "Initial removal after deprecation",
+  #{
+    kind: "ResponsePropertyRemoved",
     since: Versions.v2024_01_01,
     path: "properties.legacyStatus",
-    reason: "Initial removal after deprecation",
   }
 )
 @approvedBreakingChange(
-  "ResponsePropertyRemoved",
-  {
+  "Removed again after temporary restoration",
+  #{
+    kind: "ResponsePropertyRemoved",
     since: Versions.v2026_01_01,
     path: "properties.legacyStatus",
-    reason: "Removed again after temporary restoration",
   }
 )
 model BarProperties {
@@ -999,7 +996,7 @@ The guiding rule is: **link to HEAD when the declaration still exists in HEAD so
 
 Origin tracing in `src/diff/origin.ts` complements this by recovering declaration-scoped anchors for deduplication and suppression. In addition to `sourceProperty` chains and canonical-property tracing, it follows template-instantiation metadata (`sourceModels` and `templateMapper.args`) so template-generated properties resolve back to the named source declaration (the B5 fix).
 
-Measured on real ARM specs, this produced **92.3%** origin coverage on Network, **88.6%** on fleet, and **100%** source-link resolution in both evaluated Phase B specs.
+Measured on real ARM specs, this produced **100%** origin coverage and **100%** source-link resolution on all evaluated Phase B specs (Network, Fleet, AppConfig). Earlier iterations achieved 92.3% (Network) and 88.6% (Fleet) origin coverage before the template-tracing and base-side resolution improvements.
 
 ### 8.3 Cross-Compilation Suppression Identity
 
