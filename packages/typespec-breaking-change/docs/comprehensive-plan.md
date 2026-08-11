@@ -6,7 +6,7 @@
 
 ## Executive Summary
 
-The prototype is functional with 420 tests, real-world performance validation, and multiple demo PRs.
+The prototype is functional with 442 tests, real-world performance validation, and multiple demo PRs.
 This document captures the path from prototype to production-ready tool, organized as:
 Completed Work, (A) resolved designs not yet implemented, (B) genuinely open questions, and (C) prioritized work items.
 
@@ -42,7 +42,7 @@ Completed Work, (A) resolved designs not yet implemented, (B) genuinely open que
 
 These designs are settled in the design documents, but still need code.
 
-### A1. New vs Existing Suppression Classification (NOT YET IMPLEMENTED)
+### A1. New vs Existing Suppression Classification (IMPLEMENTED)
 
 **Answer:** Design overview §6.3 fully specifies the classification:
 - **NEW:** base has no matching suppression; head does → requires reviewer sign-off
@@ -52,9 +52,9 @@ These designs are settled in the design documents, but still need code.
 
 Identity matching uses declaration identity for direct placement, ancestor identity + `path` + DiffKind for parent placement. Metadata comparison includes since, reason. PR labels (`BreakingChangeReviewRequired`, `VersioningReviewRequired`) are applied for new/modified instances.
 **Evidence:** Design overview §6.3, lines 612-671.
-**Implementation status:** NOT YET IMPLEMENTED. Phase 1 item (1.1). See `docs/a1-a2-tdd-plan.md`.
+**Implementation:** `src/suppression/inventory.ts`, `src/suppression/classification.ts`. Phase 1 item (1.1). See `docs/a1-a2-tdd-plan.md`.
 
-### A2. Version Scoping with `since:` (NOT YET IMPLEMENTED)
+### A2. Version Scoping with `since:` (IMPLEMENTED)
 
 **Answer:** Design overview §6.6 fully resolves this, including the "temporary revert" scenario:
 - Unscoped approval valid when it matches exactly one distinct stable baseline
@@ -63,7 +63,7 @@ Identity matching uses declaration identity for direct placement, ancestor ident
 - Ambiguity detection: when an unscoped approval matches multiple baselines, the later finding is reported as unsuppressed until the approval is split into `since:`-scoped versions
 
 **Evidence:** Design overview §6.6, lines 862-917, with worked example (legacyStatus removed → re-added → removed again, resolved with two `since:`-scoped decorators).
-**Implementation status:** NOT YET IMPLEMENTED. Phase 8 item (8.1). See `docs/a1-a2-tdd-plan.md`.
+**Implementation:** `src/suppression/ambiguity.ts`, updated `src/suppression/suppression.ts`. Phase 8 item (8.1). See `docs/a1-a2-tdd-plan.md`.
 
 ### A3. Stale Approval Detection (NOT YET IMPLEMENTED)
 
