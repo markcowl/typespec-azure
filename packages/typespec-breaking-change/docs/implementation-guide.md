@@ -29,7 +29,7 @@ Another recurring distinction: **projected names are not always source names**. 
 
 ---
 
-## 1. Shared Types (`src/types.ts`, `src/diff-kind.ts`)
+## 1. Shared Types and Rule Catalog (`src/types.ts`, `src/diff-kind.ts`, `src/rule-catalog.ts`)
 
 ### Purpose
 
@@ -38,6 +38,9 @@ These files define the common vocabulary used everywhere else: what a diff is, h
 ### Key types
 
 - `DiffKind` (`src/diff-kind.ts`): string union for every detectable change, including merged `Resource*` kinds.
+- `diffKinds` (`src/diff-kind.ts`): runtime source of truth used by validation and completeness checks.
+- `diffKindCatalog` (`src/rule-catalog.ts`): records whether each kind is emitted, derived, or
+  declared-only, along with its producer and Phase B policy.
 - `DiffComponent`: `"request" | "response"`.
 - `OperationIdentity`: `{ method, path, name? }`.
 - `OperationDiffIdentity`: operation-relative identity with `component`, optional `statusCode`, and `element`.
@@ -74,11 +77,14 @@ The pipeline first creates `ApiDiff[]`, then policy turns those into `Finding[]`
   - diff production
   - policy classification
   - suppression validation (`validDiffKinds`)
+  - `diffKindCatalog` support metadata
   - reporting/reference docs as needed
 
 ### Gotchas
 
-- `DiffKind` is the source of truth for decorator validation too, not just reporting.
+- `diffKinds` is the source of truth for decorator validation too, not just reporting.
+- A `declared-only` catalog entry is taxonomy, not an implemented capability. Do not document it
+  as detected until it has a producer and positive/negative tests.
 - `OperationDiffIdentity.element` is the suppression/reporting path; changing its format has broad ripple effects.
 - `TimingInfo` has more buckets than the current orchestrator fully populates; do not assume every field is currently measured precisely.
 

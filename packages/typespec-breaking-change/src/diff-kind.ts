@@ -1,97 +1,94 @@
 /**
- * All detectable diff kinds produced by the diff engine.
- * These are context-neutral — the policy engine determines severity.
+ * All diff kinds recognized by the tool.
  *
- * Organized by the taxonomy in diff-taxonomy.md.
+ * A kind being present here does not by itself mean that the comparison engine
+ * can produce it. See `diffKindCatalog` for implementation status.
  */
-export type DiffKind =
-  // Service-level
-  | "ApiVersionRemoved"
-  | "ApiVersionAdded"
-  | "AuthSchemeRemoved"
-  | "AuthSchemeAdded"
-  | "OAuthScopeAdded"
-  | "OAuthScopeRemoved"
-  // Operation-level
-  | "OperationRemoved"
-  | "OperationAdded"
-  | "OperationRouteChanged"
-  // Request parameters
-  | "RequestPathParameterAdded"
-  | "RequestPathParameterRemoved"
-  | "RequestQueryParameterAdded"
-  | "RequestQueryParameterRemoved"
-  | "RequestHeaderAdded"
-  | "RequestHeaderRemoved"
-  | "RequestParameterRenamed"
-  | "RequestParameterMadeRequired"
-  | "RequestParameterMadeOptional"
-  | "RequestParameterDefaultChanged"
-  | "RequestParameterLocationChanged"
-  // Request body properties
-  | "RequestPropertyAdded"
-  | "RequestPropertyRemoved"
-  | "RequestPropertyRenamed"
-  | "RequestPropertyTypeChanged"
-  | "RequestPropertyTypeNarrowed"
-  | "RequestPropertyTypeWidened"
-  | "RequestPropertyMadeRequired"
-  | "RequestPropertyMadeOptional"
-  | "RequestPropertyDefaultChanged"
-  // Request type/encoding/constraint
-  | "RequestTypeChanged"
-  | "RequestTypeNarrowed"
-  | "RequestTypeWidened"
-  | "RequestTypeKindChanged"
-  | "RequestEncodingChanged"
-  | "RequestConstraintStrengthened"
-  | "RequestConstraintRelaxed"
-  // Request content type
-  | "RequestContentTypeAdded"
-  | "RequestContentTypeRemoved"
-  // Response properties
-  | "ResponsePropertyAdded"
-  | "ResponsePropertyRemoved"
-  | "ResponsePropertyRenamed"
-  | "ResponsePropertyTypeChanged"
-  | "ResponsePropertyTypeNarrowed"
-  | "ResponsePropertyTypeWidened"
-  | "ResponsePropertyMadeRequired"
-  | "ResponsePropertyMadeOptional"
-  // Response type/encoding/constraint
-  | "ResponseTypeChanged"
-  | "ResponseTypeNarrowed"
-  | "ResponseTypeWidened"
-  | "ResponseTypeKindChanged"
-  | "ResponseEncodingChanged"
-  | "ResponseConstraintStrengthened"
-  | "ResponseConstraintRelaxed"
-  // Response structure
-  | "ResponseStatusCodeAdded"
-  | "ResponseStatusCodeRemoved"
-  | "ResponseContentTypeAdded"
-  | "ResponseContentTypeRemoved"
-  | "ResponseHeaderAdded"
-  | "ResponseHeaderRemoved"
-  | "ErrorResponseAdded"
-  | "ErrorResponseRemoved"
-  // Model / type kind diffs
-  | "TypeKindChanged"
-  | "EnumerationMemberAdded"
-  | "EnumerationMemberRemoved"
-  | "EnumerationOpened"
-  | "EnumerationClosed"
-  | "DiscriminatorChanged"
-  // Default values (generic, applies to params and properties)
-  | "DefaultValueAdded"
-  | "DefaultValueRemoved"
-  | "DefaultValueChanged"
-  // Resource-level (merged from matching Request + Response findings)
-  | "ResourcePropertyAdded"
-  | "ResourcePropertyRemoved"
-  | "ResourcePropertyRenamed"
-  | "ResourcePropertyTypeChanged"
-  | "ResourcePropertyTypeNarrowed"
-  | "ResourcePropertyTypeWidened"
-  | "ResourcePropertyMadeRequired"
-  | "ResourcePropertyMadeOptional";
+export const diffKinds = [
+  "ApiVersionRemoved",
+  "ApiVersionAdded",
+  "AuthSchemeRemoved",
+  "AuthSchemeAdded",
+  "OAuthScopeAdded",
+  "OAuthScopeRemoved",
+  "OperationRemoved",
+  "OperationAdded",
+  "OperationRouteChanged",
+  "RequestPathParameterAdded",
+  "RequestPathParameterRemoved",
+  "RequestQueryParameterAdded",
+  "RequestQueryParameterRemoved",
+  "RequestHeaderAdded",
+  "RequestHeaderRemoved",
+  "RequestParameterRenamed",
+  "RequestParameterMadeRequired",
+  "RequestParameterMadeOptional",
+  "RequestParameterDefaultChanged",
+  "RequestParameterLocationChanged",
+  "RequestPropertyAdded",
+  "RequestPropertyRemoved",
+  "RequestPropertyRenamed",
+  "RequestPropertyTypeChanged",
+  "RequestPropertyTypeNarrowed",
+  "RequestPropertyTypeWidened",
+  "RequestPropertyMadeRequired",
+  "RequestPropertyMadeOptional",
+  "RequestPropertyDefaultChanged",
+  "RequestTypeChanged",
+  "RequestTypeNarrowed",
+  "RequestTypeWidened",
+  "RequestTypeKindChanged",
+  "RequestEncodingChanged",
+  "RequestConstraintStrengthened",
+  "RequestConstraintRelaxed",
+  "RequestContentTypeAdded",
+  "RequestContentTypeRemoved",
+  "ResponsePropertyAdded",
+  "ResponsePropertyRemoved",
+  "ResponsePropertyRenamed",
+  "ResponsePropertyTypeChanged",
+  "ResponsePropertyTypeNarrowed",
+  "ResponsePropertyTypeWidened",
+  "ResponsePropertyMadeRequired",
+  "ResponsePropertyMadeOptional",
+  "ResponseTypeChanged",
+  "ResponseTypeNarrowed",
+  "ResponseTypeWidened",
+  "ResponseTypeKindChanged",
+  "ResponseEncodingChanged",
+  "ResponseConstraintStrengthened",
+  "ResponseConstraintRelaxed",
+  "ResponseStatusCodeAdded",
+  "ResponseStatusCodeRemoved",
+  "ResponseContentTypeAdded",
+  "ResponseContentTypeRemoved",
+  "ResponseHeaderAdded",
+  "ResponseHeaderRemoved",
+  "ErrorResponseAdded",
+  "ErrorResponseRemoved",
+  "TypeKindChanged",
+  "EnumerationMemberAdded",
+  "EnumerationMemberRemoved",
+  "EnumerationOpened",
+  "EnumerationClosed",
+  "DiscriminatorChanged",
+  "DefaultValueAdded",
+  "DefaultValueRemoved",
+  "DefaultValueChanged",
+  "ResourcePropertyAdded",
+  "ResourcePropertyRemoved",
+  "ResourcePropertyRenamed",
+  "ResourcePropertyTypeChanged",
+  "ResourcePropertyTypeNarrowed",
+  "ResourcePropertyTypeWidened",
+  "ResourcePropertyMadeRequired",
+  "ResourcePropertyMadeOptional",
+] as const;
+
+export type DiffKind = (typeof diffKinds)[number];
+
+const diffKindSet: ReadonlySet<string> = new Set(diffKinds);
+
+export function isDiffKind(value: string): value is DiffKind {
+  return diffKindSet.has(value);
+}
