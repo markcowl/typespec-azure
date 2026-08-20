@@ -7,7 +7,7 @@ type Classification = Readonly<{
   rule: string;
 }>;
 
-const PHASE_B_RULES = {
+export const phaseBRuleCatalog = {
   ApiVersionRemoved: { severity: "error", rule: "service-level" },
   ApiVersionAdded: { severity: "ignore", rule: "service-level" },
   AuthSchemeRemoved: { severity: "error", rule: "service-level" },
@@ -121,7 +121,7 @@ function classifyPhaseA(diff: ApiDiff, versionPair: VersionPair): Finding {
 }
 
 function classifyPhaseB(diff: ApiDiff, versionPair: VersionPair): Finding {
-  const classification = refineClassification(diff, PHASE_B_RULES[diff.kind]);
+  const classification = refineClassification(diff, phaseBRuleCatalog[diff.kind]);
   return {
     diff,
     severity: classification.severity,
