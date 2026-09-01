@@ -1,10 +1,9 @@
 #!/usr/bin/env node
 
-import { resolve } from "path";
+import { resolve, relative, dirname } from "path";
 import { writeFile, mkdir } from "fs/promises";
-import { dirname } from "path";
 import { compileService } from "./compile.js";
-import { checkoutRevision, mapPathIntoWorktree } from "./git-checkout.js";
+import { checkoutRevision, getRepoRoot, mapPathIntoWorktree } from "./git-checkout.js";
 import { analyzeBaseAndHead, analyzeProgram, type AnalysisOptions } from "../pipeline/orchestrator.js";
 import { formatConsoleReport } from "../reporting/reporter-console.js";
 import { formatGithubReport } from "../reporting/reporter-github.js";
@@ -221,7 +220,15 @@ export async function main(args: string[]): Promise<number> {
     // wins if both are provided.
     if (options.baseRef && !options.base) {
       const entryPath = resolve(options.entry);
-      const { worktreePath, cleanup } = await checkoutRevision(options.baseRef, entryPath);
+      const repoRoot = await getRepoRoot(entryPath);
+      // Scope the worktree checkout to just the entry folder via sparse
+      // checkout — checking out the full repository at the base revision is
+      // far too slow for large monorepos (e.g. azure-rest-api-specs) where
+      // only one spec folder's history actually needs to be compared.
+      const sparsePath = relative(repoRoot, entryPath);
+      const { worktreePath, cleanup } = await checkoutRevision(options.baseRef, entryPath, {
+        sparsePaths: [sparsePath],
+      });
       baseCheckoutCleanup = cleanup;
       options.base = await mapPathIntoWorktree(entryPath, entryPath, worktreePath);
     }

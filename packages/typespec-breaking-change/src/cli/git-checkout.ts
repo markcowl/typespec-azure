@@ -41,6 +41,19 @@ export async function resolveCommitish(commitish: string, repoPath: string): Pro
   return stdout.trim();
 }
 
+export interface CheckoutOptions {
+  /**
+   * Repository-relative directory path(s) to materialize, in `git
+   * sparse-checkout --cone` format (e.g. `"specification/widget"`). When
+   * provided, only these paths (plus top-level repo files, per cone-mode
+   * semantics) are written to disk — critical for large monorepos where a
+   * full checkout of every file at the target revision would be far slower
+   * than the analysis itself. When omitted, the entire repository is
+   * checked out (fine for small repos, e.g. in tests).
+   */
+  sparsePaths?: string[];
+}
+
 /**
  * Check out `commitish` into an isolated, disposable git worktree so that a
  * base revision can be analyzed without mutating the caller's working tree
@@ -52,8 +65,15 @@ export async function resolveCommitish(commitish: string, repoPath: string): Pro
  * which mutates the shared working tree AND index for the affected path and
  * must be manually, carefully unwound afterward.
  *
+ * By default `git worktree add` materializes every file in the repository at
+ * `commitish`. For a large monorepo (e.g. azure-rest-api-specs, with tens of
+ * thousands of spec files) that is prohibitively slow when only one spec
+ * folder is actually needed. Pass `sparsePaths` to scope the checkout with
+ * `git sparse-checkout --cone` so only the relevant folder(s) are written.
+ *
  * @param commitish - Any git revision expression (SHA, branch, tag, etc.)
  * @param repoPath - Any path inside the git repository to check out from.
+ * @param options - See {@link CheckoutOptions}.
  * @returns The worktree root path and a cleanup function. Callers MUST call
  *   `cleanup()` (ideally in a `finally` block) to remove the worktree,
  *   otherwise it will be left on disk as an orphaned temp directory and a
@@ -62,6 +82,7 @@ export async function resolveCommitish(commitish: string, repoPath: string): Pro
 export async function checkoutRevision(
   commitish: string,
   repoPath: string,
+  options: CheckoutOptions = {},
 ): Promise<CheckoutResult> {
   const repoRoot = await getRepoRoot(repoPath);
   const sha = await resolveCommitish(commitish, repoRoot);
@@ -72,11 +93,42 @@ export async function checkoutRevision(
   // let `worktree add` recreate it.
   await rm(worktreeRoot, { recursive: true, force: true });
 
+  const sparsePaths = options.sparsePaths?.filter((p) => p.length > 0) ?? [];
+
   try {
-    await execFileAsync("git", ["worktree", "add", "--detach", worktreeRoot, sha], {
-      cwd: repoRoot,
-    });
+    // With sparse paths requested, skip the default full checkout
+    // (--no-checkout) and materialize files only after sparse-checkout
+    // patterns are configured, so we never pay the cost of writing out the
+    // whole repository just to immediately narrow it down.
+    const addArgs = ["worktree", "add", "--detach"];
+    if (sparsePaths.length > 0) {
+      addArgs.push("--no-checkout");
+    }
+    addArgs.push(worktreeRoot, sha);
+    await execFileAsync("git", addArgs, { cwd: repoRoot });
+
+    if (sparsePaths.length > 0) {
+      await execFileAsync("git", ["sparse-checkout", "init", "--cone"], { cwd: worktreeRoot });
+      await execFileAsync("git", ["sparse-checkout", "set", ...sparsePaths], {
+        cwd: worktreeRoot,
+      });
+      // `sparse-checkout set` only updates the skip-worktree bits and the
+      // sparse-checkout patterns file; because the worktree was created with
+      // --no-checkout (nothing materialized yet), we still need to populate
+      // the working tree from the index ourselves. `read-tree -mu HEAD`
+      // (unlike `checkout HEAD -- .`) respects the sparse-checkout patterns,
+      // so only the requested paths are written to disk.
+      await execFileAsync("git", ["read-tree", "-mu", "HEAD"], { cwd: worktreeRoot });
+    }
   } catch (error) {
+    // Best-effort cleanup of the partially-created worktree before
+    // surfacing the error, so a failed checkout doesn't also leak a
+    // worktree registration.
+    await execFileAsync("git", ["worktree", "remove", "--force", worktreeRoot], {
+      cwd: repoRoot,
+    }).catch(() => undefined);
+    await rm(worktreeRoot, { recursive: true, force: true }).catch(() => undefined);
+
     throw new Error(
       `Failed to check out revision "${commitish}" (resolved to ${sha}) as a git worktree: ` +
         `${error instanceof Error ? error.message : String(error)}`,

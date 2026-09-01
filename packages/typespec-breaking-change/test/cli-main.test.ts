@@ -56,6 +56,7 @@ describe("CLI main module", () => {
 
     vi.doMock("../src/cli/git-checkout.js", () => ({
       checkoutRevision,
+      getRepoRoot: vi.fn(async () => "/tmp"),
       mapPathIntoWorktree,
     }));
     vi.doMock("../src/cli/compile.js", () => ({
@@ -87,7 +88,11 @@ describe("CLI main module", () => {
     const code = await main(["spec-folder", "--base-ref", "origin/main"]);
 
     expect(code).toBe(0);
-    expect(checkoutRevision).toHaveBeenCalledWith("origin/main", expect.stringContaining("spec-folder"));
+    expect(checkoutRevision).toHaveBeenCalledWith(
+      "origin/main",
+      expect.stringContaining("spec-folder"),
+      expect.objectContaining({ sparsePaths: expect.any(Array) }),
+    );
     expect(mapPathIntoWorktree).toHaveBeenCalledWith(
       expect.stringContaining("spec-folder"),
       expect.stringContaining("spec-folder"),
@@ -102,6 +107,7 @@ describe("CLI main module", () => {
     const checkoutRevision = vi.fn();
     vi.doMock("../src/cli/git-checkout.js", () => ({
       checkoutRevision,
+      getRepoRoot: vi.fn(async () => "/tmp"),
       mapPathIntoWorktree: vi.fn(),
     }));
     vi.doMock("../src/cli/compile.js", () => ({
@@ -148,6 +154,7 @@ describe("CLI main module", () => {
     const cleanup = vi.fn(async () => undefined);
     vi.doMock("../src/cli/git-checkout.js", () => ({
       checkoutRevision: vi.fn(async () => ({ worktreePath: "/tmp/worktree-root", cleanup })),
+      getRepoRoot: vi.fn(async () => "/tmp"),
       mapPathIntoWorktree: vi.fn(async () => "/tmp/worktree-root/spec-folder"),
     }));
     vi.doMock("../src/cli/compile.js", () => ({

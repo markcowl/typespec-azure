@@ -132,6 +132,48 @@ describe("git-checkout", () => {
   it("throws a descriptive error when the worktree add fails", async () => {
     await expect(checkoutRevision("deadbeef", repoRoot)).rejects.toThrow(/deadbeef/);
   });
+
+  it("materializes only the requested sparsePaths, excluding unrelated folders", async () => {
+    // Add a second, unrelated top-level folder so we can assert it's
+    // excluded from the sparse checkout.
+    const otherDir = join(repoRoot, "specification", "other-service");
+    await mkdir(otherDir, { recursive: true });
+    await writeFile(join(otherDir, "main.tsp"), "// other service\n");
+    await execFileAsync("git", ["add", "."], { cwd: repoRoot });
+    await execFileAsync("git", ["commit", "-m", "add other-service"], { cwd: repoRoot });
+    const sha = (await execFileAsync("git", ["rev-parse", "HEAD"], { cwd: repoRoot })).stdout.trim();
+
+    const { worktreePath, cleanup } = await checkoutRevision(sha, repoRoot, {
+      sparsePaths: ["specification/widget"],
+    });
+    try {
+      const { readFile, stat } = await import("fs/promises");
+
+      const widgetPath = join(worktreePath, "specification", "widget", "main.tsp");
+      const widgetContent = await readFile(widgetPath, "utf8");
+      expect(widgetContent).toBe("// head version\n");
+
+      // The unrelated folder must NOT be materialized in the worktree — this
+      // is the whole point of sparse-checkout: avoiding the cost of writing
+      // out every file in the repository at the target revision.
+      const otherPath = join(worktreePath, "specification", "other-service", "main.tsp");
+      await expect(stat(otherPath)).rejects.toThrow();
+    } finally {
+      await cleanup();
+    }
+  }, 30000);
+
+  it("cleans up a sparse-checkout worktree just as reliably as a full one", async () => {
+    const { worktreePath, cleanup } = await checkoutRevision(baseSha, repoRoot, {
+      sparsePaths: ["specification/widget"],
+    });
+    await cleanup();
+
+    const worktreeList = await execFileAsync("git", ["worktree", "list", "--porcelain"], {
+      cwd: repoRoot,
+    });
+    expect(worktreeList.stdout).not.toContain(worktreePath);
+  }, 30000);
 });
 
 async function realBasename(path: string): Promise<string> {
