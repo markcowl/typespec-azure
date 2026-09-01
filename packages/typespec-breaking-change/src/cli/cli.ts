@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { resolve, relative, dirname } from "path";
-import { writeFile, mkdir } from "fs/promises";
+import { writeFile, mkdir, stat } from "fs/promises";
 import { compileService } from "./compile.js";
 import { checkoutRevision, getRepoRoot, mapPathIntoWorktree } from "./git-checkout.js";
 import { analyzeBaseAndHead, analyzeProgram, type AnalysisOptions } from "../pipeline/orchestrator.js";
@@ -230,7 +230,18 @@ export async function main(args: string[]): Promise<number> {
         sparsePaths: [sparsePath],
       });
       baseCheckoutCleanup = cleanup;
-      options.base = await mapPathIntoWorktree(entryPath, entryPath, worktreePath);
+      const mappedBasePath = await mapPathIntoWorktree(entryPath, entryPath, worktreePath);
+
+      // The entry folder may not have existed yet at the base revision (e.g.
+      // a PR that adds a brand-new spec folder) — in that case there's
+      // nothing to compare against, so fall back to single-program (Phase B
+      // only) analysis rather than failing with an ENOENT compile error.
+      const baseExistsAtRevision = await stat(mappedBasePath)
+        .then(() => true)
+        .catch(() => false);
+      if (baseExistsAtRevision) {
+        options.base = mappedBasePath;
+      }
     }
 
     let result: AnalysisResult;

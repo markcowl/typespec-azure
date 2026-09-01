@@ -1,3 +1,6 @@
+import { mkdtemp, rm } from "fs/promises";
+import { tmpdir } from "os";
+import { join } from "path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 describe("CLI main module", () => {
@@ -52,7 +55,13 @@ describe("CLI main module", () => {
       worktreePath: "/tmp/worktree-root",
       cleanup,
     }));
-    const mapPathIntoWorktree = vi.fn(async () => "/tmp/worktree-root/spec-folder");
+    // Use a real temp directory as the "mapped" base path so the CLI's
+    // fs.stat existence check (real fs, not mocked) succeeds — this test is
+    // exercising the two-program (base+head) branch, distinct from the
+    // "folder didn't exist at base revision" fallback covered separately
+    // below.
+    const mappedBasePath = await mkdtemp(join(tmpdir(), "typespec-breaking-change-cli-test-"));
+    const mapPathIntoWorktree = vi.fn(async () => mappedBasePath);
 
     vi.doMock("../src/cli/git-checkout.js", () => ({
       checkoutRevision,
@@ -99,6 +108,55 @@ describe("CLI main module", () => {
       "/tmp/worktree-root",
     );
     expect(cleanup).toHaveBeenCalledOnce();
+
+    logSpy.mockRestore();
+    await rm(mappedBasePath, { recursive: true, force: true });
+  });
+
+  it("falls back to single-program analysis when the folder doesn't exist at --base-ref", async () => {
+    const cleanup = vi.fn(async () => undefined);
+    vi.doMock("../src/cli/git-checkout.js", () => ({
+      checkoutRevision: vi.fn(async () => ({ worktreePath: "/tmp/worktree-root", cleanup })),
+      getRepoRoot: vi.fn(async () => "/tmp"),
+      mapPathIntoWorktree: vi.fn(async () => "/tmp/worktree-root/spec-folder"),
+    }));
+    const compileService = vi.fn(async (path: string) => ({ path }));
+    vi.doMock("../src/cli/compile.js", () => ({ compileService }));
+    const analyzeBaseAndHead = vi.fn();
+    const analyzeProgram = vi.fn(() => ({
+      findings: [],
+      timing: {
+        compileBaseMs: 0,
+        compileHeadMs: 0,
+        versionMutatorsMs: 0,
+        canonicalizeMs: 0,
+        identityMatchingMs: 0,
+        diffEngineMs: 0,
+        classifyMs: 0,
+        suppressMs: 0,
+        reportMs: 0,
+        totalMs: 0,
+      },
+      summary: { servicesAnalyzed: 1, comparisonsPerformed: 1, versionComparisons: [] },
+    }));
+    vi.doMock("../src/pipeline/orchestrator.js", () => ({ analyzeBaseAndHead, analyzeProgram }));
+    // Real fs.stat: the mocked worktree path genuinely doesn't exist on disk,
+    // so this exercises the "folder didn't exist at base revision" fallback
+    // without needing to mock fs/promises at all.
+
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => undefined);
+    const { main } = await import("../src/cli/cli.js");
+
+    const code = await main(["spec-folder", "--base-ref", "origin/main"]);
+
+    expect(code).toBe(0);
+    expect(cleanup).toHaveBeenCalledOnce();
+    expect(analyzeBaseAndHead).not.toHaveBeenCalled();
+    expect(analyzeProgram).toHaveBeenCalledOnce();
+    // Only the head folder should have been compiled — never the
+    // (nonexistent) base path.
+    expect(compileService).toHaveBeenCalledOnce();
+    expect(compileService).toHaveBeenCalledWith(expect.stringContaining("spec-folder"));
 
     logSpy.mockRestore();
   });
