@@ -2,6 +2,8 @@ import type { Namespace } from "@typespec/compiler";
 import { unsafe_mutateSubgraphWithNamespace } from "@typespec/compiler/experimental";
 import { getVersioningMutators } from "@typespec/versioning";
 import { describe, expect, it } from "vitest";
+import { computeDiffs } from "../src/diff/diff-engine.js";
+import { analyzeProgram } from "../src/pipeline/orchestrator.js";
 import {
   buildComparisonPairs,
   buildPhaseAPairs,
@@ -371,3 +373,118 @@ describe("comparison pair construction", () => {
 function getModelFromNamespace(ns: Namespace, modelName: string) {
   return ns.models.get(modelName);
 }
+
+/**
+ * Regression coverage for many-version, stable/preview-interspersed specs,
+ * shaped after real-world ARM specs like ContainerService/Fleet (4 stable
+ * versions interspersed with preview versions). Moved here as a synthetic
+ * fixture — rather than asserting exact version lists / pair counts /
+ * operation growth against the live Fleet spec (which can change over time
+ * and silently invalidate hardcoded expectations) — this exercises the same
+ * versioning-cadence shape with a fixture this suite fully controls.
+ */
+describe("many-version spec regression (Fleet-shaped synthetic fixture)", () => {
+  const source = `
+    @versioned(Versions)
+    @service
+    namespace FleetLikeService;
+
+    enum Versions {
+      v1: "2024-01-01-preview",
+      v2: "2024-06-01",
+      v3: "2024-09-01-preview",
+      v4: "2025-01-01",
+      v5: "2025-04-01-preview",
+      v6: "2025-07-01-preview",
+      v7: "2026-01-01",
+    }
+
+    model Widget { name: string; }
+
+    @get @route("/widgets/{id}") op getWidget(@path id: string): Widget;
+    @get @route("/widgets") op listWidgets(): Widget[];
+    @added(Versions.v2) @post @route("/widgets") op createWidget(): Widget;
+    @added(Versions.v2) @delete @route("/widgets/{id}") op deleteWidget(@path id: string): void;
+    @added(Versions.v4) @patch @route("/widgets/{id}") op patchWidget(@path id: string): Widget;
+    @added(Versions.v4) @post @route("/widgets/{id}:clone") op cloneWidget(@path id: string): Widget;
+    @added(Versions.v7) @post @route("/widgets/{id}:archive") op archiveWidget(@path id: string): Widget;
+  `;
+
+  const expectedVersions = [
+    "2024-01-01-preview",
+    "2024-06-01",
+    "2024-09-01-preview",
+    "2025-01-01",
+    "2025-04-01-preview",
+    "2025-07-01-preview",
+    "2026-01-01",
+  ];
+  const expectedStableVersions = ["2024-06-01", "2025-01-01", "2026-01-01"];
+
+  it("discovers 7 versions across 3 stable and 4 preview", async () => {
+    const { program } = await Tester.compile(source);
+    const services = enumerateVersions(program);
+    expect(services).toHaveLength(1);
+
+    const fleetLike = services[0];
+    expect(fleetLike.service.name).toBe("FleetLikeService");
+    expect(fleetLike.versions).toEqual(expectedVersions);
+
+    const stableVersions = fleetLike.versions.filter((v) => !v.endsWith("-preview"));
+    expect(stableVersions).toEqual(expectedStableVersions);
+  });
+
+  it("generates correct Phase B pairs (each candidate vs previous stable)", async () => {
+    const { program } = await Tester.compile(source);
+    const services = enumerateVersions(program);
+    const fleetLike = services[0];
+
+    const pairs = buildPhaseBPairs(fleetLike.versions, fleetLike.versions);
+
+    // The first version (preview) and the first stable version have no
+    // preceding stable baseline, so they produce no pair. Every version
+    // after that pairs with the nearest preceding stable version.
+    expect(pairs).toHaveLength(5);
+    expect(pairs).toEqual([
+      { baseVersion: "2024-06-01", headVersion: "2024-09-01-preview", phase: "cross-version" },
+      { baseVersion: "2024-06-01", headVersion: "2025-01-01", phase: "cross-version" },
+      { baseVersion: "2025-01-01", headVersion: "2025-04-01-preview", phase: "cross-version" },
+      { baseVersion: "2025-01-01", headVersion: "2025-07-01-preview", phase: "cross-version" },
+      { baseVersion: "2025-01-01", headVersion: "2026-01-01", phase: "cross-version" },
+    ]);
+  });
+
+  it("operation count grows across versions (2 → 7)", async () => {
+    const { program } = await Tester.compile(source);
+    const services = enumerateVersions(program);
+    const fleetLike = services[0];
+
+    const firstView = createVersionedView(program, fleetLike.service, fleetLike.versions[0]);
+    const lastView = createVersionedView(
+      program,
+      fleetLike.service,
+      fleetLike.versions[fleetLike.versions.length - 1],
+    );
+
+    const firstOps = computeDiffs(firstView, firstView).baseCanonicalization.operations.size;
+    const lastOps = computeDiffs(lastView, lastView).baseCanonicalization.operations.size;
+
+    expect(firstOps).toBe(2);
+    expect(lastOps).toBe(7);
+    expect(lastOps).toBeGreaterThan(firstOps);
+  });
+
+  it("findings never reference a preview version as the base", async () => {
+    const { program } = await Tester.compile(source);
+    const result = analyzeProgram(program, { phase: "cross-version" });
+
+    expect(result.summary.comparisonsPerformed).toBe(5);
+    expect(result.findings.length).toBeGreaterThan(0);
+
+    for (const finding of result.findings) {
+      expect(finding.versionPair.baseVersion).not.toContain("-preview");
+      expect(finding.phase).toBe("cross-version");
+    }
+  });
+});
+
