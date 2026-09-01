@@ -46,6 +46,131 @@ describe("CLI main module", () => {
     expect(errorSpy).toHaveBeenCalledWith("Analysis failed: boom");
   });
 
+  it("resolves --base-ref into --base via checkoutRevision and cleans up afterward", async () => {
+    const cleanup = vi.fn(async () => undefined);
+    const checkoutRevision = vi.fn(async () => ({
+      worktreePath: "/tmp/worktree-root",
+      cleanup,
+    }));
+    const mapPathIntoWorktree = vi.fn(async () => "/tmp/worktree-root/spec-folder");
+
+    vi.doMock("../src/cli/git-checkout.js", () => ({
+      checkoutRevision,
+      mapPathIntoWorktree,
+    }));
+    vi.doMock("../src/cli/compile.js", () => ({
+      compileService: vi.fn(async (path: string) => ({ path })),
+    }));
+    vi.doMock("../src/pipeline/orchestrator.js", () => ({
+      analyzeBaseAndHead: vi.fn(() => ({
+        findings: [],
+        timing: {
+          compileBaseMs: 0,
+          compileHeadMs: 0,
+          versionMutatorsMs: 0,
+          canonicalizeMs: 0,
+          identityMatchingMs: 0,
+          diffEngineMs: 0,
+          classifyMs: 0,
+          suppressMs: 0,
+          reportMs: 0,
+          totalMs: 0,
+        },
+        summary: { servicesAnalyzed: 1, comparisonsPerformed: 1, versionComparisons: [] },
+      })),
+      analyzeProgram: vi.fn(),
+    }));
+
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => undefined);
+    const { main } = await import("../src/cli/cli.js");
+
+    const code = await main(["spec-folder", "--base-ref", "origin/main"]);
+
+    expect(code).toBe(0);
+    expect(checkoutRevision).toHaveBeenCalledWith("origin/main", expect.stringContaining("spec-folder"));
+    expect(mapPathIntoWorktree).toHaveBeenCalledWith(
+      expect.stringContaining("spec-folder"),
+      expect.stringContaining("spec-folder"),
+      "/tmp/worktree-root",
+    );
+    expect(cleanup).toHaveBeenCalledOnce();
+
+    logSpy.mockRestore();
+  });
+
+  it("prefers an explicit --base path over --base-ref and skips checkout", async () => {
+    const checkoutRevision = vi.fn();
+    vi.doMock("../src/cli/git-checkout.js", () => ({
+      checkoutRevision,
+      mapPathIntoWorktree: vi.fn(),
+    }));
+    vi.doMock("../src/cli/compile.js", () => ({
+      compileService: vi.fn(async (path: string) => ({ path })),
+    }));
+    vi.doMock("../src/pipeline/orchestrator.js", () => ({
+      analyzeBaseAndHead: vi.fn(() => ({
+        findings: [],
+        timing: {
+          compileBaseMs: 0,
+          compileHeadMs: 0,
+          versionMutatorsMs: 0,
+          canonicalizeMs: 0,
+          identityMatchingMs: 0,
+          diffEngineMs: 0,
+          classifyMs: 0,
+          suppressMs: 0,
+          reportMs: 0,
+          totalMs: 0,
+        },
+        summary: { servicesAnalyzed: 1, comparisonsPerformed: 1, versionComparisons: [] },
+      })),
+      analyzeProgram: vi.fn(),
+    }));
+
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => undefined);
+    const { main } = await import("../src/cli/cli.js");
+
+    const code = await main([
+      "spec-folder",
+      "--base",
+      "base-folder",
+      "--base-ref",
+      "origin/main",
+    ]);
+
+    expect(code).toBe(0);
+    expect(checkoutRevision).not.toHaveBeenCalled();
+
+    logSpy.mockRestore();
+  });
+
+  it("cleans up the worktree checkout even when analysis throws", async () => {
+    const cleanup = vi.fn(async () => undefined);
+    vi.doMock("../src/cli/git-checkout.js", () => ({
+      checkoutRevision: vi.fn(async () => ({ worktreePath: "/tmp/worktree-root", cleanup })),
+      mapPathIntoWorktree: vi.fn(async () => "/tmp/worktree-root/spec-folder"),
+    }));
+    vi.doMock("../src/cli/compile.js", () => ({
+      compileService: vi.fn(async () => {
+        throw new Error("compile failed");
+      }),
+    }));
+    vi.doMock("../src/pipeline/orchestrator.js", () => ({
+      analyzeBaseAndHead: vi.fn(),
+      analyzeProgram: vi.fn(),
+    }));
+
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const { main } = await import("../src/cli/cli.js");
+
+    const code = await main(["spec-folder", "--base-ref", "origin/main"]);
+
+    expect(code).toBe(2);
+    expect(cleanup).toHaveBeenCalledOnce();
+
+    errorSpy.mockRestore();
+  });
+
   it("runs main when the module is invoked directly", async () => {
     vi.doMock("../src/cli/compile.js", () => ({
       compileService: vi.fn(async (path: string) => ({ path })),

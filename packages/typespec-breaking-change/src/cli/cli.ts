@@ -4,6 +4,7 @@ import { resolve } from "path";
 import { writeFile, mkdir } from "fs/promises";
 import { dirname } from "path";
 import { compileService } from "./compile.js";
+import { checkoutRevision, mapPathIntoWorktree } from "./git-checkout.js";
 import { analyzeBaseAndHead, analyzeProgram, type AnalysisOptions } from "../pipeline/orchestrator.js";
 import { formatConsoleReport } from "../reporting/reporter-console.js";
 import { formatGithubReport } from "../reporting/reporter-github.js";
@@ -16,6 +17,13 @@ export interface CliOptions {
   entry: string;
   /** Path to the base TypeSpec entry point (file-to-file mode). */
   base?: string;
+  /**
+   * Git commitish (SHA, branch, tag, etc.) to check out as the base revision
+   * for comparison, as an alternative to `--base <path>`. The tool checks
+   * this out into an isolated, disposable git worktree and analyzes the
+   * equivalent path within it. Ignored if `--base` is also set.
+   */
+  baseRef?: string;
   /** Output format for console: console, json, or github. */
   format: "console" | "json" | "github";
   /** Write JSON report to this file path. */
@@ -57,6 +65,9 @@ export function parseArgs(args: string[]): CliOptions {
       case "--base":
       case "-b":
         options.base = args[++i];
+        break;
+      case "--base-ref":
+        options.baseRef = args[++i];
         break;
       case "--format":
       case "-f":
@@ -119,6 +130,9 @@ Arguments:
 Options:
   -e, --entry <path>         Path to the head TypeSpec entry point (file-to-file mode)
   -b, --base <path>          Path to the base TypeSpec entry point (file-to-file comparison)
+  --base-ref <commitish>     Git revision (SHA, branch, tag) to check out as the base for
+                             comparison, instead of an explicit --base path. Checked out into
+                             an isolated, disposable git worktree. Ignored if --base is set.
   -f, --format <format>      Console output format: console, json, github (default: console)
   --json-output <path>       Write JSON report to file
   --markdown-output <path>   Write Markdown summary to file
@@ -141,6 +155,9 @@ Examples:
 
   # File-to-file comparison (Phase A + B)
   typespec-breaking-change --entry ./head/main.tsp --base ./base/main.tsp
+
+  # Compare against a base revision resolved directly from git (no manual checkout)
+  typespec-breaking-change ./specification/widget/Microsoft.Widget/Widget --base-ref origin/main
 
   # CI mode: JSON + Markdown output, fail on breaking
   typespec-breaking-change ./spec --json-output report.json --markdown-output report.md --fail-on-breaking
@@ -196,7 +213,19 @@ export async function main(args: string[]): Promise<number> {
     log: (message: string) => console.log(message),
   };
 
+  let baseCheckoutCleanup: (() => Promise<void>) | undefined;
+
   try {
+    // Resolve --base-ref into a concrete --base path by checking the
+    // revision out into an isolated git worktree. Explicit --base always
+    // wins if both are provided.
+    if (options.baseRef && !options.base) {
+      const entryPath = resolve(options.entry);
+      const { worktreePath, cleanup } = await checkoutRevision(options.baseRef, entryPath);
+      baseCheckoutCleanup = cleanup;
+      options.base = await mapPathIntoWorktree(entryPath, entryPath, worktreePath);
+    }
+
     let result: AnalysisResult;
 
     if (options.base) {
@@ -262,6 +291,10 @@ export async function main(args: string[]): Promise<number> {
     const message = error instanceof Error ? error.message : String(error);
     console.error(`Analysis failed: ${message}`);
     return 2;
+  } finally {
+    if (baseCheckoutCleanup) {
+      await baseCheckoutCleanup();
+    }
   }
 }
 

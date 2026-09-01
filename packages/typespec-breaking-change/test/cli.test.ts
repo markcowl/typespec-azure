@@ -45,6 +45,12 @@ describe("CLI argument parsing", () => {
     expect(opts.entry).toBe("head/main.tsp");
   });
 
+  it("parses --base-ref for git-revision-based comparison", () => {
+    const opts = parseArgs(["main.tsp", "--base-ref", "origin/main"]);
+    expect(opts.baseRef).toBe("origin/main");
+    expect(opts.base).toBeUndefined();
+  });
+
   it("parses --service filter", () => {
     const opts = parseArgs(["main.tsp", "--service", "Widgets"]);
     expect(opts.service).toBe("Widgets");
