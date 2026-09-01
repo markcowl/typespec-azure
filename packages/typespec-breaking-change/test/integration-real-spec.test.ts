@@ -28,6 +28,28 @@ describeExternal("integration: azure-rest-api-specs", () => {
           }
         },
       );
+
+      // Lightweight Phase A sanity check: comparing a real spec's compiled
+      // program to itself must always yield zero findings. Unlike the
+      // dual-checkout "azure-rest-api-specs base/head" suite below, this
+      // requires only the single checkout already used for Phase B, so it
+      // runs unconditionally for every case (no AZURE_REST_API_SPECS_BASE
+      // needed) and catches any Phase A regression on real spec shapes.
+      it(
+        "Phase A same-version comparison against itself yields no findings",
+        { timeout: specCase.timeoutMs },
+        async () => {
+          if (specCase.expectedCanonicalizationError) {
+            return;
+          }
+          const program = await compileCase(realSpecRepository!, specCase);
+          const result = analyzeBaseAndHead(program, program, {
+            phase: "same-version",
+            serviceName: specCase.serviceName,
+          });
+          expect(result.findings).toHaveLength(0);
+        },
+      );
     });
   }
 });
@@ -58,7 +80,7 @@ describe.skipIf(!realSpecRepository || !realSpecBaseRepository)(
 
         const result = analyzeBaseAndHead(baseProgram, headProgram, {
           phase: "same-version",
-          service: phaseACase!.serviceName,
+          serviceName: phaseACase!.serviceName,
         });
 
         expect(result.summary.phase).toBe("same-version");
@@ -110,13 +132,24 @@ async function validateCrossVersionCase(specCase: RealSpecCase): Promise<void> {
 
   const result = analyzeProgram(program, {
     phase: "cross-version",
-    service: specCase.serviceName,
+    serviceName: specCase.serviceName,
   });
 
   expect(result.summary.servicesAnalyzed).toBe(1);
   expect(result.summary.comparisonsPerformed).toBeGreaterThanOrEqual(specCase.minimumComparisons);
   expect(result.findings.every((finding) => finding.phase === "cross-version")).toBe(true);
   expectFindingsAreDeduplicated(result.findings);
+
+  if (specCase.minimumOriginCoveragePercent !== undefined) {
+    expectMinimumOriginCoverage(result.findings, specCase.minimumOriginCoveragePercent);
+  }
+
+  if (specCase.maxAnalysisMs !== undefined) {
+    expect(
+      result.timing.totalMs,
+      `Analysis took ${result.timing.totalMs}ms, exceeding budget of ${specCase.maxAnalysisMs}ms`,
+    ).toBeLessThan(specCase.maxAnalysisMs);
+  }
 }
 
 function expectFindingsAreDeduplicated(
@@ -139,6 +172,26 @@ function expectFindingsAreDeduplicated(
     expect(seen.has(key), `Duplicate finding: ${key}`).toBe(false);
     seen.add(key);
   }
+}
+
+function expectMinimumOriginCoverage(
+  findings: ReturnType<typeof analyzeProgram>["findings"],
+  minimumPercent: number,
+): void {
+  const total = findings.length;
+  if (total === 0) {
+    // No findings means there's nothing to trace an origin for; coverage is
+    // vacuously satisfied rather than a division-by-zero failure.
+    return;
+  }
+
+  const withOrigin = findings.filter((finding) => finding.diff.origin).length;
+  const percent = (withOrigin / total) * 100;
+
+  expect(
+    percent,
+    `Origin coverage ${withOrigin}/${total} (${Math.round(percent)}%) is below the required ${minimumPercent}%`,
+  ).toBeGreaterThanOrEqual(minimumPercent);
 }
 
 function formatDiagnostics(
