@@ -10,6 +10,25 @@ import { formatGithubReport } from "../reporting/reporter-github.js";
 import { formatJsonReport, type JsonReportOptions } from "../reporting/reporter-json.js";
 import { renderMarkdownSummary, type MarkdownReportOptions } from "../reporting/reporter-markdown.js";
 import type { AnalysisResult, ComparisonPhase } from "../types.js";
+import { formatDiagnostic, type Program } from "@typespec/compiler";
+
+/**
+ * Fail loudly if `program` has any compile-time error diagnostics, instead of
+ * letting analysis silently proceed against an effectively-empty Program
+ * (e.g. because every `import` failed to resolve). A program with unresolved
+ * imports/decorators compiles "successfully" (no exception) but produces no
+ * usable namespaces, so downstream analysis would otherwise report a
+ * misleadingly benign "no changes found" instead of surfacing the real
+ * problem.
+ */
+function assertNoCompileErrors(program: Program, label: string): void {
+  const errors = (program.diagnostics ?? []).filter((d) => d.severity === "error");
+  if (errors.length === 0) {
+    return;
+  }
+  const details = errors.map((d) => `  ${formatDiagnostic(d)}`).join("\n");
+  throw new Error(`Failed to compile the ${label}: ${errors.length} error(s) found:\n${details}`);
+}
 
 export interface CliOptions {
   /** Path to the head TypeSpec entry point (file-to-file mode). */
@@ -221,11 +240,25 @@ export async function main(args: string[]): Promise<number> {
     if (options.baseRef && !options.base) {
       const entryPath = resolve(options.entry);
       const repoRoot = await getRepoRoot(entryPath);
-      // Scope the worktree checkout to just the entry folder via sparse
-      // checkout — checking out the full repository at the base revision is
-      // far too slow for large monorepos (e.g. azure-rest-api-specs) where
-      // only one spec folder's history actually needs to be compared.
-      const sparsePath = relative(repoRoot, entryPath);
+      // Scope the worktree checkout to the entry folder's *parent* directory
+      // via sparse checkout — checking out the full repository at the base
+      // revision is far too slow for large monorepos (e.g.
+      // azure-rest-api-specs) where only one spec folder's history actually
+      // needs to be compared. The parent (rather than just the entry folder
+      // itself) is required because some TypeSpec projects import sibling
+      // folders (e.g. a `Foo.Shared` namespace next to `Foo`); scoping to
+      // only the entry folder would leave those imports unresolvable and
+      // silently break compilation of the checked-out revision.
+      const parentPath = dirname(entryPath);
+      const parentRelative = relative(repoRoot, parentPath);
+      // Guard against the entry folder being the repo root itself (or
+      // otherwise outside it), where the parent would resolve outside the
+      // repository (a leading ".." segment) — sparse-checkout can't scope to
+      // a path outside the repo, so fall back to just the entry folder.
+      const sparsePath =
+        parentRelative.length > 0 && !parentRelative.startsWith("..")
+          ? parentRelative
+          : relative(repoRoot, entryPath);
       const { worktreePath, cleanup } = await checkoutRevision(options.baseRef, entryPath, {
         sparsePaths: [sparsePath],
       });
@@ -252,13 +285,16 @@ export async function main(args: string[]): Promise<number> {
       const headPath = resolve(options.entry);
 
       const baseProgram = await compileService(basePath);
+      assertNoCompileErrors(baseProgram, `base revision (${options.baseRef ?? basePath})`);
       const headProgram = await compileService(headPath);
+      assertNoCompileErrors(headProgram, "head revision");
 
       result = analyzeBaseAndHead(baseProgram, headProgram, analysisOptions);
     } else {
       // Single-program analysis (Phase B only)
       const entryPath = resolve(options.entry);
       const program = await compileService(entryPath);
+      assertNoCompileErrors(program, "head revision");
 
       result = analyzeProgram(program, analysisOptions);
     }

@@ -1,5 +1,5 @@
 import { execFile } from "child_process";
-import { mkdtemp, rm, stat } from "fs/promises";
+import { mkdtemp, rm, stat, symlink } from "fs/promises";
 import { tmpdir } from "os";
 import { dirname, join, relative, resolve } from "path";
 import { promisify } from "util";
@@ -120,6 +120,17 @@ export async function checkoutRevision(
       // so only the requested paths are written to disk.
       await execFileAsync("git", ["read-tree", "-mu", "HEAD"], { cwd: worktreeRoot });
     }
+
+    // The checked-out revision is git-tracked source only — it has no
+    // `node_modules`, since dependencies are never committed to the repo.
+    // Without this, compiling the checked-out revision fails to resolve
+    // every npm import (e.g. `@typespec/http`, `@typespec/versioning`) and
+    // silently produces an empty, diagnostics-only Program instead of
+    // throwing — which callers can easily mistake for "nothing to compare"
+    // rather than "compilation was completely broken". Link the caller's
+    // own `node_modules` into the worktree root so the checked-out revision
+    // resolves dependencies exactly like the caller's own working tree does.
+    await linkNodeModulesIfPresent(repoRoot, worktreeRoot);
   } catch (error) {
     // Best-effort cleanup of the partially-created worktree before
     // surfacing the error, so a failed checkout doesn't also leak a
@@ -170,6 +181,39 @@ export async function mapPathIntoWorktree(
   const repoRoot = await getRepoRoot(repoPath);
   const relativePath = relative(repoRoot, resolve(originalPath));
   return join(worktreePath, relativePath);
+}
+
+/**
+ * Best-effort: symlink `<repoRoot>/node_modules` into `<worktreeRoot>/node_modules`
+ * so that a checked-out revision (which has no dependencies of its own, since
+ * `node_modules` is never git-tracked) can still resolve npm imports during
+ * TypeSpec compilation. Silently does nothing if the caller's repo has no
+ * `node_modules` (e.g. isolated test fixtures) or if the worktree already has
+ * one (e.g. `sparsePaths` happened to include a checked-in `node_modules`).
+ */
+async function linkNodeModulesIfPresent(repoRoot: string, worktreeRoot: string): Promise<void> {
+  const sourceNodeModules = join(repoRoot, "node_modules");
+  const targetNodeModules = join(worktreeRoot, "node_modules");
+
+  const sourceExists = await stat(sourceNodeModules)
+    .then(() => true)
+    .catch(() => false);
+  if (!sourceExists) {
+    return;
+  }
+
+  const targetExists = await stat(targetNodeModules)
+    .then(() => true)
+    .catch(() => false);
+  if (targetExists) {
+    return;
+  }
+
+  // "junction" is honored only on Windows (and ignored elsewhere, where a
+  // regular directory symlink is created) — passing it unconditionally lets
+  // this work without an elevated/developer-mode symlink privilege on
+  // Windows, which a plain "dir" symlink would otherwise require.
+  await symlink(sourceNodeModules, targetNodeModules, "junction").catch(() => undefined);
 }
 
 async function directoryOf(path: string): Promise<string> {
