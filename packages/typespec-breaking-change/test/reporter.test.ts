@@ -1,11 +1,7 @@
-import type { AnalysisResult, Finding } from "../src/index.js";
-import {
-  formatConsoleReport,
-  formatGithubReport,
-  formatJsonReport,
-} from "../src/index.js";
-import { renderMarkdownSummary } from "../src/reporting/reporter-markdown.js";
 import { describe, expect, it } from "vitest";
+import type { AnalysisResult, Finding } from "../src/index.js";
+import { formatConsoleReport, formatGithubReport, formatJsonReport } from "../src/index.js";
+import { renderMarkdownSummary } from "../src/reporting/reporter-markdown.js";
 
 function createLocation(path: string, line: number) {
   const lines = Array.from({ length: Math.max(line, 1) }, (_, index) => `line ${index + 1}`);
@@ -196,15 +192,19 @@ describe("reporters", () => {
       },
     ];
 
-    expect(formatConsoleReport(result)).toContain("✅ No unversioned changes found (2 version pairs compared)");
+    expect(formatConsoleReport(result)).toContain(
+      "✅ No unversioned changes found (2 version pairs compared)",
+    );
   });
 
   it("formats a JSON report without circular references", () => {
-    const report = JSON.parse(formatJsonReport(createResult(), {
-      specPaths: ["./spec"],
-      baseRevision: "origin/main",
-      headRevision: "HEAD",
-    }));
+    const report = JSON.parse(
+      formatJsonReport(createResult(), {
+        specPaths: ["./spec"],
+        baseRevision: "origin/main",
+        headRevision: "HEAD",
+      }),
+    );
     expect(report.specPaths).toEqual(["./spec"]);
     expect(report.baseRevision).toBe("origin/main");
     expect(report.headRevision).toBe("HEAD");
@@ -383,7 +383,9 @@ describe("markdown reporter", () => {
       },
     ];
     const md = renderMarkdownSummary(result);
-    expect(md).toContain("✅ **No cross-version breaking changes found (2 version pairs compared)**");
+    expect(md).toContain(
+      "✅ **No cross-version breaking changes found (2 version pairs compared)**",
+    );
     expect(md).not.toContain("### Unsuppressed Breaking Changes");
     expect(md).toContain("<summary>Version Comparisons</summary>");
   });
@@ -463,5 +465,32 @@ describe("markdown reporter", () => {
     });
     expect(md).toContain("## TypeSpec Versioning Change Analysis");
     expect(md).not.toContain("## Breaking Change Analysis");
+  });
+
+  it("omits the title and renders spec paths as subsections", () => {
+    const md = renderMarkdownSummary(createResult(), {
+      omitTitle: true,
+      specPaths: ["specification/widget/Contoso.Widget"],
+    });
+    expect(md).not.toContain("## Breaking Change Analysis");
+    expect(md).toContain("### specification/widget/Contoso.Widget");
+    expect(md).not.toContain("**Spec:**");
+  });
+
+  it("renders human-readable phase labels", () => {
+    const result = createResult();
+    result.summary.versionComparisons.push({
+      serviceName: "Contoso.WidgetManager",
+      baseVersion: "2025-01-01",
+      headVersion: "2025-01-01",
+      phase: "same-version",
+      findingCount: 0,
+    });
+
+    const md = renderMarkdownSummary(result);
+    expect(md).toContain("| Cross-version |");
+    expect(md).toContain("| Same-version |");
+    expect(md).not.toContain("| cross-version |");
+    expect(md).not.toContain("| same-version |");
   });
 });

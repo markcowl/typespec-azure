@@ -1,10 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { parseArgs, formatResult, main, type CliOptions } from "../src/cli/cli.js";
+import { formatResult, main, parseArgs, type CliOptions } from "../src/cli/cli.js";
 import * as compileModule from "../src/cli/compile.js";
 import * as orchestratorModule from "../src/pipeline/orchestrator.js";
 import type { AnalysisResult, Finding } from "../src/types.js";
 
-function createSummary(overrides: Partial<AnalysisResult["summary"]> = {}): AnalysisResult["summary"] {
+function createSummary(
+  overrides: Partial<AnalysisResult["summary"]> = {},
+): AnalysisResult["summary"] {
   return {
     servicesAnalyzed: 1,
     comparisonsPerformed: 1,
@@ -77,9 +79,22 @@ describe("CLI argument parsing", () => {
     expect(opts.showIgnored).toBe(true);
   });
 
+  it("parses Markdown title options", () => {
+    const opts = parseArgs([
+      "main.tsp",
+      "--report-title",
+      "General Versioning Analysis",
+      "--omit-title",
+    ]);
+    expect(opts.reportTitle).toBe("General Versioning Analysis");
+    expect(opts.omitTitle).toBe(true);
+  });
+
   it("prints usage and exits for --help", () => {
     const logSpy = vi.spyOn(console, "log").mockImplementation(() => undefined);
-    const exitSpy = vi.spyOn(process, "exit").mockImplementation(((code?: string | number | null) => {
+    const exitSpy = vi.spyOn(process, "exit").mockImplementation(((
+      code?: string | number | null,
+    ) => {
       throw new Error(`process.exit:${code ?? ""}`);
     }) as typeof process.exit);
 
@@ -117,14 +132,22 @@ describe("CLI formatResult", () => {
       {
         diff: {
           kind: "ResponsePropertyRemoved" as any,
-          identity: { operation: { method: "GET", path: "/widgets" }, component: "response", element: "body.name" },
+          identity: {
+            operation: { method: "GET", path: "/widgets" },
+            component: "response",
+            element: "body.name",
+          },
           message: "Response property 'name' was removed",
         },
         severity: "error",
         rule: "ResponsePropertyRemoved",
         phase: "cross-version",
         suppressed: false,
-        versionPair: { baseVersion: "2024-01-01", headVersion: "2025-01-01", phase: "cross-version" },
+        versionPair: {
+          baseVersion: "2024-01-01",
+          headVersion: "2025-01-01",
+          phase: "cross-version",
+        },
       } as Finding,
     ],
     timing: {
@@ -210,7 +233,16 @@ describe("CLI main", () => {
 
     const logSpy = vi.spyOn(console, "log").mockImplementation(() => undefined);
 
-    const code = await main(["--base", "base.tsp", "--entry", "head.tsp", "--service", "Test", "--phase", "same-version"]);
+    const code = await main([
+      "--base",
+      "base.tsp",
+      "--entry",
+      "head.tsp",
+      "--service",
+      "Test",
+      "--phase",
+      "same-version",
+    ]);
 
     expect(code).toBe(0);
     expect(compileSpy).toHaveBeenNthCalledWith(1, expect.stringMatching(/base\.tsp$/));
@@ -319,9 +351,16 @@ describe("CLI main", () => {
     vi.spyOn(orchestratorModule, "analyzeProgram").mockReturnValue({
       findings: [],
       timing: {
-        compileBaseMs: 0, compileHeadMs: 0, versionMutatorsMs: 0,
-        canonicalizeMs: 0, identityMatchingMs: 0, diffEngineMs: 0,
-        classifyMs: 0, suppressMs: 0, reportMs: 0, totalMs: 0,
+        compileBaseMs: 0,
+        compileHeadMs: 0,
+        versionMutatorsMs: 0,
+        canonicalizeMs: 0,
+        identityMatchingMs: 0,
+        diffEngineMs: 0,
+        classifyMs: 0,
+        suppressMs: 0,
+        reportMs: 0,
+        totalMs: 0,
       },
       summary: createSummary({ phase: "cross-version" }),
     });
@@ -337,8 +376,10 @@ describe("CLI main", () => {
     try {
       const code = await main([
         "head.tsp",
-        "--json-output", join(dir, "report.json"),
-        "--markdown-output", join(dir, "report.md"),
+        "--json-output",
+        join(dir, "report.json"),
+        "--markdown-output",
+        join(dir, "report.md"),
       ]);
 
       expect(code).toBe(0);
@@ -363,7 +404,11 @@ describe("CLI main", () => {
         {
           diff: {
             kind: "ResponsePropertyRemoved",
-            identity: { operation: { method: "GET", path: "/test" }, component: "response", element: "body.x" },
+            identity: {
+              operation: { method: "GET", path: "/test" },
+              component: "response",
+              element: "body.x",
+            },
             message: "Property removed",
             headSourceLocation: {
               file: { path: "src/test.tsp", text: "line1\nline2\nline3" },
@@ -379,9 +424,16 @@ describe("CLI main", () => {
         },
       ] as Finding[],
       timing: {
-        compileBaseMs: 0, compileHeadMs: 0, versionMutatorsMs: 0,
-        canonicalizeMs: 0, identityMatchingMs: 0, diffEngineMs: 0,
-        classifyMs: 0, suppressMs: 0, reportMs: 0, totalMs: 0,
+        compileBaseMs: 0,
+        compileHeadMs: 0,
+        versionMutatorsMs: 0,
+        canonicalizeMs: 0,
+        identityMatchingMs: 0,
+        diffEngineMs: 0,
+        classifyMs: 0,
+        suppressMs: 0,
+        reportMs: 0,
+        totalMs: 0,
       },
       summary: createSummary({ phase: "cross-version" }),
     });
@@ -415,9 +467,16 @@ describe("CLI main", () => {
         },
       ] as Finding[],
       timing: {
-        compileBaseMs: 0, compileHeadMs: 0, versionMutatorsMs: 0,
-        canonicalizeMs: 0, identityMatchingMs: 0, diffEngineMs: 0,
-        classifyMs: 0, suppressMs: 0, reportMs: 0, totalMs: 0,
+        compileBaseMs: 0,
+        compileHeadMs: 0,
+        versionMutatorsMs: 0,
+        canonicalizeMs: 0,
+        identityMatchingMs: 0,
+        diffEngineMs: 0,
+        classifyMs: 0,
+        suppressMs: 0,
+        reportMs: 0,
+        totalMs: 0,
       },
       summary: createSummary({ phase: "cross-version" }),
     });
@@ -438,7 +497,11 @@ describe("CLI main", () => {
         {
           diff: {
             kind: "ResponsePropertyRemoved",
-            identity: { operation: { method: "GET", path: "/test" }, component: "response", element: "body.x" },
+            identity: {
+              operation: { method: "GET", path: "/test" },
+              component: "response",
+              element: "body.x",
+            },
             message: "Property removed",
           },
           severity: "error",
@@ -449,9 +512,16 @@ describe("CLI main", () => {
         },
       ] as Finding[],
       timing: {
-        compileBaseMs: 0, compileHeadMs: 0, versionMutatorsMs: 0,
-        canonicalizeMs: 0, identityMatchingMs: 0, diffEngineMs: 0,
-        classifyMs: 0, suppressMs: 0, reportMs: 0, totalMs: 0,
+        compileBaseMs: 0,
+        compileHeadMs: 0,
+        versionMutatorsMs: 0,
+        canonicalizeMs: 0,
+        identityMatchingMs: 0,
+        diffEngineMs: 0,
+        classifyMs: 0,
+        suppressMs: 0,
+        reportMs: 0,
+        totalMs: 0,
       },
       summary: createSummary({ phase: "cross-version" }),
     });
@@ -466,9 +536,16 @@ describe("CLI main", () => {
     vi.spyOn(orchestratorModule, "analyzeProgram").mockReturnValue({
       findings: [],
       timing: {
-        compileBaseMs: 0, compileHeadMs: 0, versionMutatorsMs: 0,
-        canonicalizeMs: 0, identityMatchingMs: 0, diffEngineMs: 0,
-        classifyMs: 0, suppressMs: 0, reportMs: 0, totalMs: 0,
+        compileBaseMs: 0,
+        compileHeadMs: 0,
+        versionMutatorsMs: 0,
+        canonicalizeMs: 0,
+        identityMatchingMs: 0,
+        diffEngineMs: 0,
+        classifyMs: 0,
+        suppressMs: 0,
+        reportMs: 0,
+        totalMs: 0,
       },
       summary: createSummary({ phase: "cross-version" }),
     });
