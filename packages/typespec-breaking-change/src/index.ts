@@ -18,7 +18,7 @@ export {
 } from "./suppression/decorators.js";
 export { emitFindingDiagnostics } from "./suppression/diagnostics.js";
 export * from "./diff/diff-engine.js";
-export type { DiffKind } from "./diff-kind.js";
+export { diffKinds, isDiffKind, type DiffKind } from "./diff-kind.js";
 export * from "./diff/diff-operations.js";
 export * from "./diff/diff-types.js";
 export { $lib, BreakingChangeStateKeys } from "./lib.js";
@@ -35,6 +35,12 @@ export { resolveOrigin } from "./diff/origin.js";
 export * from "./pipeline/orchestrator.js";
 export * from "./pipeline/policy.js";
 export { resolveFindingLocation } from "./pipeline/resolve-location.js";
+export {
+  diffKindCatalog,
+  getDiffKindCatalogEntry,
+  type DiffKindCatalogEntry,
+  type DiffKindSupportStatus,
+} from "./rule-catalog.js";
 export * from "./reporting/reporter-console.js";
 export * from "./reporting/reporter-github.js";
 export * from "./reporting/reporter-json.js";

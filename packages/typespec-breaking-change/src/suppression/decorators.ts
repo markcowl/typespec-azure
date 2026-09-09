@@ -1,88 +1,6 @@
 import type { DecoratorContext, Program, Type } from "@typespec/compiler";
-import type { DiffKind } from "../diff-kind.js";
+import { isDiffKind, type DiffKind } from "../diff-kind.js";
 import { BreakingChangeStateKeys, reportDiagnostic } from "../lib.js";
-
-const validDiffKinds = new Set<DiffKind>([
-  "ApiVersionRemoved",
-  "ApiVersionAdded",
-  "AuthSchemeRemoved",
-  "AuthSchemeAdded",
-  "OAuthScopeAdded",
-  "OAuthScopeRemoved",
-  "OperationRemoved",
-  "OperationAdded",
-  "OperationRouteChanged",
-  "RequestPathParameterAdded",
-  "RequestPathParameterRemoved",
-  "RequestQueryParameterAdded",
-  "RequestQueryParameterRemoved",
-  "RequestHeaderAdded",
-  "RequestHeaderRemoved",
-  "RequestParameterRenamed",
-  "RequestParameterMadeRequired",
-  "RequestParameterMadeOptional",
-  "RequestParameterDefaultChanged",
-  "RequestParameterLocationChanged",
-  "RequestPropertyAdded",
-  "RequestPropertyRemoved",
-  "RequestPropertyRenamed",
-  "RequestPropertyTypeChanged",
-  "RequestPropertyTypeNarrowed",
-  "RequestPropertyTypeWidened",
-  "RequestPropertyMadeRequired",
-  "RequestPropertyMadeOptional",
-  "RequestPropertyDefaultChanged",
-  "RequestTypeChanged",
-  "RequestTypeNarrowed",
-  "RequestTypeWidened",
-  "RequestTypeKindChanged",
-  "RequestEncodingChanged",
-  "RequestConstraintStrengthened",
-  "RequestConstraintRelaxed",
-  "RequestContentTypeAdded",
-  "RequestContentTypeRemoved",
-  "ResponsePropertyAdded",
-  "ResponsePropertyRemoved",
-  "ResponsePropertyRenamed",
-  "ResponsePropertyTypeChanged",
-  "ResponsePropertyTypeNarrowed",
-  "ResponsePropertyTypeWidened",
-  "ResponsePropertyMadeRequired",
-  "ResponsePropertyMadeOptional",
-  "ResponseTypeChanged",
-  "ResponseTypeNarrowed",
-  "ResponseTypeWidened",
-  "ResponseTypeKindChanged",
-  "ResponseEncodingChanged",
-  "ResponseConstraintStrengthened",
-  "ResponseConstraintRelaxed",
-  "ResponseStatusCodeAdded",
-  "ResponseStatusCodeRemoved",
-  "ResponseContentTypeAdded",
-  "ResponseContentTypeRemoved",
-  "ResponseHeaderAdded",
-  "ResponseHeaderRemoved",
-  "ErrorResponseAdded",
-  "ErrorResponseRemoved",
-  "TypeKindChanged",
-  "EnumerationMemberAdded",
-  "EnumerationMemberRemoved",
-  "EnumerationOpened",
-  "EnumerationClosed",
-  "DiscriminatorChanged",
-  "DefaultValueAdded",
-  "DefaultValueRemoved",
-  "DefaultValueChanged",
-  // Resource-level (merged from matching Request + Response findings)
-  "ResourcePropertyAdded",
-  "ResourcePropertyRemoved",
-  "ResourcePropertyRenamed",
-  "ResourcePropertyTypeChanged",
-  "ResourcePropertyTypeNarrowed",
-  "ResourcePropertyTypeWidened",
-  "ResourcePropertyMadeRequired",
-  "ResourcePropertyMadeOptional",
-]);
 
 /**
  * Metadata stored by suppression decorators.
@@ -195,8 +113,8 @@ function validateDiffKind(
     return undefined;
   }
 
-  if (validDiffKinds.has(kind as DiffKind)) {
-    return kind as DiffKind;
+  if (isDiffKind(kind)) {
+    return kind;
   }
 
   reportDiagnostic(context.program, {
