@@ -8,38 +8,66 @@ This guide captures operational knowledge for developing, deploying, and testing
 
 ```bash
 # From packages/typespec-breaking-change/
-npm test                           # Run all tests (vitest, ~364 tests)
-npx tsc -p tsconfig.build.json    # Build JS to dist/src/
-tsp format <file>.tsp              # Always format .tsp files after editing
+npm test                       # Run all tests (vitest, ~364 tests)
+npx tsc -p tsconfig.build.json # Build JS to dist/src/
+tsp format path/to/file.tsp    # Always format .tsp files after editing
 ```
 
 When changing decorator option models in `.tsp` files, regenerate TypeScript types with `tspd`.
 
+### Real-spec integration tests
+
+The real-spec suite uses an external `azure-rest-api-specs` checkout. It first checks
+`AZURE_REST_API_SPECS`, then looks for a sibling checkout next to `typespec-azure`. If neither is
+available, the external suite is skipped.
+
+```powershell
+$env:AZURE_REST_API_SPECS = "C:\repos\azure-rest-api-specs"
+pnpm test:real-specs
+```
+
+The checked-in manifest covers ARM and data-plane services using stable invariant thresholds
+rather than exact version or finding counts. To exercise Phase A with separate compilations, point
+`AZURE_REST_API_SPECS_BASE` at a second checkout:
+
+```powershell
+$env:AZURE_REST_API_SPECS = "C:\repos\azure-rest-api-specs-head"
+$env:AZURE_REST_API_SPECS_BASE = "C:\repos\azure-rest-api-specs-base"
+pnpm test:real-specs
+```
+
+The base and head variables must resolve to different checkouts. Pin their commits in CI or when
+capturing benchmark results so failures are reproducible.
+
+Known tool failures belong in the manifest as `expectedCanonicalizationError` entries. These cases
+still compile the real service and assert the current failure message. If the underlying issue is
+fixed, the test fails until the expectation is removed and normal pipeline assertions are enabled.
+
 ## 2. Repository Layout
 
-| Location | Purpose |
-|----------|---------|
-| `markcowl/typespec-azure` (fork) | Tool source, branch `prototype/breaking-change-tool` |
-| `markcowl/azure-rest-api-specs` (fork) | Demo PRs with deployed JS |
-| `rfcs/breaking-changes/` | Design documents (on prototype branch) |
-| `packages/typespec-breaking-change/` | Package root |
-| `packages/typespec-breaking-change/docs/` | Developer docs, demo plans |
-| `packages/typespec-breaking-change/PROTOTYPE-EVALUATION.md` | Performance benchmarks, Q&A |
+| Location                                                    | Purpose                                              |
+| ----------------------------------------------------------- | ---------------------------------------------------- |
+| `markcowl/typespec-azure` (fork)                            | Tool source, branch `prototype/breaking-change-tool` |
+| `markcowl/azure-rest-api-specs` (fork)                      | Demo PRs with deployed JS                            |
+| `rfcs/breaking-changes/`                                    | Design documents (on prototype branch)               |
+| `packages/typespec-breaking-change/`                        | Package root                                         |
+| `packages/typespec-breaking-change/docs/`                   | Developer docs, demo plans                           |
+| `packages/typespec-breaking-change/PROTOTYPE-EVALUATION.md` | Performance benchmarks, Q&A                          |
 
 ### Key Branches (markcowl/typespec-azure)
 
-| Branch | Purpose |
-|--------|---------|
-| `prototype/breaking-change-tool` | Main working branch (source + docs) |
-| `fork/rfc/breaking-changes` | Original detailed design docs (now copied to prototype branch) |
-| `fork/rfc/breaking-changes-overview` | Original overview doc (now merged into prototype branch) |
+| Branch                               | Purpose                                                        |
+| ------------------------------------ | -------------------------------------------------------------- |
+| `prototype/breaking-change-tool`     | Main working branch (source + docs)                            |
+| `fork/rfc/breaking-changes`          | Original detailed design docs (now copied to prototype branch) |
+| `fork/rfc/breaking-changes-overview` | Original overview doc (now merged into prototype branch)       |
 
 ### Rollback Tags
 
-| Tag | Location | Purpose |
-|-----|----------|---------|
-| `source-link-principle-pre` | typespec-azure | Before source link resolution changes |
-| `demo-source-link-fix-pre` | azure-rest-api-specs | Before source link fix deployment |
+| Tag                         | Location             | Purpose                               |
+| --------------------------- | -------------------- | ------------------------------------- |
+| `source-link-principle-pre` | typespec-azure       | Before source link resolution changes |
+| `demo-source-link-fix-pre`  | azure-rest-api-specs | Before source link fix deployment     |
 
 ## 3. GitHub Actions Integration (azure-rest-api-specs)
 
@@ -47,12 +75,12 @@ The tool runs via four workflow files and one deployed tool directory. All paths
 
 ### Workflow Files
 
-| File | Purpose | Trigger |
-|------|---------|---------|
-| `.github/workflows/typespec-breaking-change-code.yaml` | **Phase B analysis** (cross-version). Runs CLI with `--phase cross-version` on each impacted TypeSpec folder. Posts PR comment, uploads report artifact, sets `BreakingChangeReviewRequired` label. | `pull_request` (opened/synchronize/reopened/edited/labeled/unlabeled) |
-| `.github/workflows/typespec-breaking-change-status.yaml` | Sets commit status for Phase B. Monitors the code workflow via `_reusable-set-check-status.yaml`. Override labels: `BreakingChange-Approved-*`. | `pull_request_target`, `workflow_run` |
-| `.github/workflows/typespec-versioning-change-code.yaml` | **Phase A analysis** (same-version). Checks out base revision in-place, runs CLI with `--phase same-version --base <base_folder>`. Posts PR comment, sets `VersioningReviewRequired` label. | `pull_request` (opened/synchronize/reopened/edited/labeled/unlabeled) |
-| `.github/workflows/typespec-versioning-change-status.yaml` | Sets commit status for Phase A. Override labels: `Versioning-Approved-*`. | `pull_request_target`, `workflow_run` |
+| File                                                       | Purpose                                                                                                                                                                                             | Trigger                                                               |
+| ---------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| `.github/workflows/typespec-breaking-change-code.yaml`     | **Phase B analysis** (cross-version). Runs CLI with `--phase cross-version` on each impacted TypeSpec folder. Posts PR comment, uploads report artifact, sets `BreakingChangeReviewRequired` label. | `pull_request` (opened/synchronize/reopened/edited/labeled/unlabeled) |
+| `.github/workflows/typespec-breaking-change-status.yaml`   | Sets commit status for Phase B. Monitors the code workflow via `_reusable-set-check-status.yaml`. Override labels: `BreakingChange-Approved-*`.                                                     | `pull_request_target`, `workflow_run`                                 |
+| `.github/workflows/typespec-versioning-change-code.yaml`   | **Phase A analysis** (same-version). Checks out base revision in-place, runs CLI with `--phase same-version --base <base_folder>`. Posts PR comment, sets `VersioningReviewRequired` label.         | `pull_request` (opened/synchronize/reopened/edited/labeled/unlabeled) |
+| `.github/workflows/typespec-versioning-change-status.yaml` | Sets commit status for Phase A. Override labels: `Versioning-Approved-*`.                                                                                                                           | `pull_request_target`, `workflow_run`                                 |
 
 ### Deployed Tool Directory
 
@@ -86,19 +114,20 @@ eng/tools/typespec-breaking-change/
 
 ### Key Shared Dependencies
 
-| File | Used By |
-|------|---------|
-| `.github/actions/setup-node-install-deps` | Both code workflows (installs Node, runs npm install) |
-| `.github/workflows/_reusable-set-check-status.yaml` | Both status workflows |
-| `eng/scripts/Get-TypeSpec-Folders.ps1` | Both code workflows (finds impacted TypeSpec folders) |
+| File                                                | Used By                                               |
+| --------------------------------------------------- | ----------------------------------------------------- |
+| `.github/actions/setup-node-install-deps`           | Both code workflows (installs Node, runs npm install) |
+| `.github/workflows/_reusable-set-check-status.yaml` | Both status workflows                                 |
+| `eng/scripts/Get-TypeSpec-Folders.ps1`              | Both code workflows (finds impacted TypeSpec folders) |
 
 ### CLI Invocation
 
 Both workflows invoke the CLI as:
+
 ```bash
 node eng/tools/typespec-breaking-change/src/cli/cli.js "$folder" \
   [--base "$base_folder"] \
-  --phase {cross-version|same-version} \
+  --phase {cross-version | same-version} \
   [--report-title "..."] \
   --json-output "$folder_json" \
   --markdown-output "$folder_md" \
@@ -111,6 +140,7 @@ Phase B (`typespec-breaking-change-code.yaml`) compiles head only and compares c
 ### Updating the Tool
 
 See Section 4 below for the deployment runbook. Critical reminders:
+
 - Use `git add -f` (`.gitignore` excludes `.js` files)
 - Update **both** workflow files if the CLI entry point path changes
 - After pushing to main, rebase all PR branches and force-push
@@ -170,12 +200,12 @@ gh pr diff 5 --repo markcowl/azure-rest-api-specs --name-only
 
 ## 5. Demo PRs (markcowl/azure-rest-api-specs)
 
-| PR | Branch | Scenario | Expected Result |
-|----|--------|----------|-----------------|
-| #2 | `demo/contoso-breaking-change` | New version adds breaking change (no suppression) | ❌ 1 unsuppressed `ResourcePropertyRemoved` |
-| #3 | `demo/contoso-breaking-change-fixed` | Same change with `@approvedBreakingChange` | ⚠️ 1 suppressed finding (Phase B) |
-| #4 | `versioning-test-unsup` | Existing version modified (property removed, no `@removed`) | ❌ Phase A unsuppressed, source link to HEAD |
-| #5 | `demo/contoso-unversioned-suppressed` | Same as #4 with `@approvedUnversionedChange` | ⚠️ Phase A suppressed (cross-compilation) |
+| PR  | Branch                                | Scenario                                                    | Expected Result                              |
+| --- | ------------------------------------- | ----------------------------------------------------------- | -------------------------------------------- |
+| #2  | `demo/contoso-breaking-change`        | New version adds breaking change (no suppression)           | ❌ 1 unsuppressed `ResourcePropertyRemoved`  |
+| #3  | `demo/contoso-breaking-change-fixed`  | Same change with `@approvedBreakingChange`                  | ⚠️ 1 suppressed finding (Phase B)            |
+| #4  | `versioning-test-unsup`               | Existing version modified (property removed, no `@removed`) | ❌ Phase A unsuppressed, source link to HEAD |
+| #5  | `demo/contoso-unversioned-suppressed` | Same as #4 with `@approvedUnversionedChange`                | ⚠️ Phase A suppressed (cross-compilation)    |
 
 ### Testing a PR locally
 
@@ -199,9 +229,11 @@ The tool provides suppression decorators (`@approvedBreakingChange`, `@approvedU
 For these to work when consumed by specs:
 
 1. **`exports` field required in `package.json`:**
+
    ```json
    "exports": { ".": { "typespec": "./lib/main.tsp", "default": "./src/index.js" } }
    ```
+
    Without this, `extern dec` declarations are found but JS implementations are **silently** not loaded. The only symptom is "Unknown decorator" at compile time.
 
 2. **Consumer specs need `using Azure.BreakingChange;`** for unqualified decorator names.
@@ -251,6 +283,7 @@ When working on a shared machine:
 See `rfcs/breaking-changes/typespec-breaking-change-test-coverage.md` for the detailed test plan.
 
 Key items not yet completed:
+
 - Comprehensive future plan document (see design overview Section 7 for open design decisions)
 - Test coverage improvements (currently ~83% branch, target 95%)
 - OAD parity validation (Phase 1 of validation strategy)
