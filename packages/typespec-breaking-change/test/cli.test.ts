@@ -45,6 +45,12 @@ describe("CLI argument parsing", () => {
     expect(opts.entry).toBe("head/main.tsp");
   });
 
+  it("parses --base-ref for git-revision-based comparison", () => {
+    const opts = parseArgs(["main.tsp", "--base-ref", "origin/main"]);
+    expect(opts.baseRef).toBe("origin/main");
+    expect(opts.base).toBeUndefined();
+  });
+
   it("parses --service filter", () => {
     const opts = parseArgs(["main.tsp", "--service", "Widgets"]);
     expect(opts.service).toBe("Widgets");
@@ -171,10 +177,14 @@ describe("CLI main", () => {
     expect(code).toBe(2);
   });
 
-  it("returns exit code 0 for file with no breaking changes", async () => {
-    // The compiler handles missing files gracefully (empty program with no versions)
+  it("returns exit code 2 when the entry file does not exist", async () => {
+    // Compiling a nonexistent entry produces a "file-not-found" error
+    // diagnostic; the CLI now surfaces that as a hard failure instead of
+    // silently analyzing an empty program and reporting "no changes".
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
     const code = await main(["nonexistent.tsp"]);
-    expect(code).toBe(0);
+    expect(code).toBe(2);
+    expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("Failed to compile"));
   });
 
   it("runs two-program comparison when --base is provided", async () => {
