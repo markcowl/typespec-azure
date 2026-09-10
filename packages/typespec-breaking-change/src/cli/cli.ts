@@ -1,16 +1,23 @@
 #!/usr/bin/env node
 
-import { resolve, relative, dirname } from "path";
-import { writeFile, mkdir, stat } from "fs/promises";
-import { compileService } from "./compile.js";
-import { checkoutRevision, getRepoRoot, mapPathIntoWorktree } from "./git-checkout.js";
-import { analyzeBaseAndHead, analyzeProgram, type AnalysisOptions } from "../pipeline/orchestrator.js";
+import { formatDiagnostic, type Program } from "@typespec/compiler";
+import { mkdir, stat, writeFile } from "fs/promises";
+import { dirname, relative, resolve } from "path";
+import {
+  analyzeBaseAndHead,
+  analyzeProgram,
+  type AnalysisOptions,
+} from "../pipeline/orchestrator.js";
 import { formatConsoleReport } from "../reporting/reporter-console.js";
 import { formatGithubReport } from "../reporting/reporter-github.js";
 import { formatJsonReport, type JsonReportOptions } from "../reporting/reporter-json.js";
-import { renderMarkdownSummary, type MarkdownReportOptions } from "../reporting/reporter-markdown.js";
+import {
+  renderMarkdownSummary,
+  type MarkdownReportOptions,
+} from "../reporting/reporter-markdown.js";
 import type { AnalysisResult, ComparisonPhase } from "../types.js";
-import { formatDiagnostic, type Program } from "@typespec/compiler";
+import { compileService } from "./compile.js";
+import { checkoutRevision, getRepoRoot, mapPathIntoWorktree } from "./git-checkout.js";
 
 /**
  * Fail loudly if `program` has any compile-time error diagnostics, instead of
@@ -62,6 +69,8 @@ export interface CliOptions {
   showIgnored?: boolean;
   /** Custom report title for markdown output. */
   reportTitle?: string;
+  /** Omit the H2 title line from markdown output. */
+  omitTitle?: boolean;
 }
 
 /**
@@ -120,6 +129,9 @@ export function parseArgs(args: string[]): CliOptions {
       case "--report-title":
         options.reportTitle = args[++i];
         break;
+      case "--omit-title":
+        options.omitTitle = true;
+        break;
       case "--help":
       case "-h":
         printUsage();
@@ -160,6 +172,10 @@ Options:
   -s, --service <name>       Filter to a specific service name
   --show-suppressed          Include suppressed findings in output
   --show-ignored             Include ignored findings in output
+  --report-title <title>     Custom H2 title for the Markdown summary (default: "Breaking Change Analysis")
+  --omit-title               Omit the H2 title line from the Markdown summary. Use when a
+                              caller (e.g. a CI workflow looping over multiple folders) prints
+                              the title once itself, ahead of per-folder sections.
   -h, --help                 Show this help message
 
 Exit codes:
@@ -220,7 +236,9 @@ export async function main(args: string[]): Promise<number> {
   const options = parseArgs(args);
 
   if (!options.entry) {
-    console.error("Error: No entry point specified. Use --entry <path> or provide a positional argument.");
+    console.error(
+      "Error: No entry point specified. Use --entry <path> or provide a positional argument.",
+    );
     console.error("Run with --help for usage information.");
     return 2;
   }
@@ -324,6 +342,7 @@ export async function main(args: string[]): Promise<number> {
         workspacePath: process.env.GITHUB_WORKSPACE,
         violationsReferenceUrl: process.env.VIOLATIONS_REFERENCE_URL,
         reportTitle: options.reportTitle,
+        omitTitle: options.omitTitle,
       };
       const mdContent = renderMarkdownSummary(result, mdOptions);
       await writeFile(mdPath, mdContent);

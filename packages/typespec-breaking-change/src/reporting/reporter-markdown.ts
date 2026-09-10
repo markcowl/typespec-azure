@@ -1,8 +1,10 @@
 import type { SourceLocation } from "@typespec/compiler";
-import type { AnalysisResult, Finding } from "../types.js";
-import { isOperationIdentity } from "../types.js";
-import { formatSuppressionDiff, formatSuppressionHint } from "../suppression/suppression-guidance.js";
 import { resolveFindingLocation } from "../pipeline/resolve-location.js";
+import {
+  formatSuppressionDiff,
+  formatSuppressionHint,
+} from "../suppression/suppression-guidance.js";
+import type { AnalysisResult, Finding } from "../types.js";
 
 export interface MarkdownReportOptions {
   /** Base revision/path label. */
@@ -25,6 +27,13 @@ export interface MarkdownReportOptions {
   violationsReferenceUrl?: string;
   /** Custom report title (defaults to "Breaking Change Analysis"). */
   reportTitle?: string;
+  /**
+   * Omit the H2 title line. Use when a caller (e.g. a CI workflow looping
+   * over multiple folders in the same phase) prints the title once itself,
+   * ahead of per-folder sections, so it isn't repeated in the combined
+   * PR comment.
+   */
+  omitTitle?: boolean;
 }
 
 /** Default URL for the violations reference docs in the typespec-azure repo. */
@@ -45,13 +54,16 @@ export function renderMarkdownSummary(
   const title = options?.reportTitle ?? "Breaking Change Analysis";
 
   // Header
-  lines.push(`## ${title}`);
-  lines.push("");
+  if (!options?.omitTitle) {
+    lines.push(`## ${title}`);
+    lines.push("");
+  }
 
-  // Spec path context
+  // Spec path context, rendered as an H3 subheading so multiple folders
+  // analyzed under the same phase/title read as subsections of one report.
   if (options?.specPaths && options.specPaths.length > 0) {
     for (const sp of options.specPaths) {
-      lines.push(`**Spec:** \`${sp}\``);
+      lines.push(`### ${sp}`);
     }
     lines.push("");
   }
@@ -65,7 +77,9 @@ export function renderMarkdownSummary(
 
   // Status badge
   if (errors.length === 0 && suppressed.length === 0) {
-    lines.push(`✅ **${formatNoFindingsMessage(result.summary.phase, result.summary.comparisonsPerformed)}**`);
+    lines.push(
+      `✅ **${formatNoFindingsMessage(result.summary.phase, result.summary.comparisonsPerformed)}**`,
+    );
   } else if (errors.length === 0) {
     lines.push(
       `⚠️ **${suppressed.length} new suppressed breaking change${suppressed.length === 1 ? "" : "s"}** — review required`,
@@ -78,10 +92,8 @@ export function renderMarkdownSummary(
 
   // Summary stats
   const parts: string[] = [];
-  if (errors.length > 0)
-    parts.push(`${errors.length} unsuppressed`);
-  if (suppressed.length > 0)
-    parts.push(`${suppressed.length} suppressed`);
+  if (errors.length > 0) parts.push(`${errors.length} unsuppressed`);
+  if (suppressed.length > 0) parts.push(`${suppressed.length} suppressed`);
   parts.push(
     `${result.summary.comparisonsPerformed} version pair${result.summary.comparisonsPerformed === 1 ? "" : "s"} compared`,
   );
@@ -142,9 +154,7 @@ export function renderMarkdownSummary(
     lines.push("");
     lines.push("### New Suppressed Breaking Changes");
     lines.push("");
-    lines.push(
-      "The following breaking changes have suppression decorators.",
-    );
+    lines.push("The following breaking changes have suppression decorators.");
     lines.push("Reviewers should verify these changes are intentional and properly justified.");
 
     const grouped = groupByVersionPair(suppressed);
@@ -172,7 +182,7 @@ export function renderMarkdownSummary(
     lines.push("|---------|-------------|-------|--------|");
     for (const comparison of result.summary.versionComparisons) {
       lines.push(
-        `| ${esc(comparison.serviceName)} | ${esc(formatComparisonPair(comparison.phase, comparison.baseVersion, comparison.headVersion))} | ${esc(comparison.phase)} | ${formatComparisonResult(comparison.findingCount)} |`,
+        `| ${esc(comparison.serviceName)} | ${esc(formatComparisonPair(comparison.phase, comparison.baseVersion, comparison.headVersion))} | ${formatPhaseLabel(comparison.phase)} | ${formatComparisonResult(comparison.findingCount)} |`,
       );
     }
     lines.push("");
@@ -197,11 +207,16 @@ export function renderMarkdownSummary(
 }
 
 /** Format a DiffKind as a link to the violations reference docs. */
-function fmtKindLink(kind: string, phase: string | undefined, options?: MarkdownReportOptions): string {
+function fmtKindLink(
+  kind: string,
+  phase: string | undefined,
+  options?: MarkdownReportOptions,
+): string {
   const baseUrl = options?.violationsReferenceUrl ?? DEFAULT_VIOLATIONS_REF_URL;
-  const anchor = phase === "same-version"
-    ? "#phase-a-same-version-findings-are-projection-bugs-not-breaking-change-classifications"
-    : "#phase-b-detailed-reference";
+  const anchor =
+    phase === "same-version"
+      ? "#phase-a-same-version-findings-are-projection-bugs-not-breaking-change-classifications"
+      : "#phase-b-detailed-reference";
   return `[\`${esc(kind)}\`](${baseUrl}${anchor})`;
 }
 
@@ -282,9 +297,10 @@ function escHtml(value: string): string {
 function groupByVersionPair(findings: Finding[]): [string, Finding[]][] {
   const groups = new Map<string, Finding[]>();
   for (const f of findings) {
-    const label = f.phase === "same-version"
-      ? `${f.versionPair.headVersion} (base → head)`
-      : `${f.versionPair.baseVersion} → ${f.versionPair.headVersion}`;
+    const label =
+      f.phase === "same-version"
+        ? `${f.versionPair.headVersion} (base → head)`
+        : `${f.versionPair.baseVersion} → ${f.versionPair.headVersion}`;
     let list = groups.get(label);
     if (!list) {
       list = [];
@@ -319,4 +335,9 @@ function formatComparisonResult(findingCount: number): string {
   return findingCount === 0
     ? "✅ No changes"
     : `❌ ${findingCount} finding${findingCount === 1 ? "" : "s"}`;
+}
+
+/** Format a comparison phase as a human-readable label for the Version Comparisons table. */
+function formatPhaseLabel(phase: string): string {
+  return phase === "same-version" ? "Same-version" : "Cross-version";
 }
