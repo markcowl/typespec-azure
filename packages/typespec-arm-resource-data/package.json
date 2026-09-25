@@ -1,0 +1,72 @@
+{
+  "name": "@azure-tools/typespec-arm-resource-data",
+  "version": "0.1.0",
+  "description": "TypeSpec emitter for comparable ARM resource and operation datasets.",
+  "type": "module",
+  "license": "MIT",
+  "author": "Microsoft Corporation",
+  "keywords": [
+    "typespec",
+    "arm",
+    "emitter",
+    "resource"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Azure/typespec-azure.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Azure/typespec-azure/issues"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "main": "dist/src/index.js",
+  "types": "dist/src/index.d.ts",
+  "files": [
+    "dist/**",
+    "!dist/test/**"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/src/index.d.ts",
+      "import": "./dist/src/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "watch": "tsc -p tsconfig.build.json --watch",
+    "clean": "rimraf ./dist ./temp",
+    "lint": "oxlint . --deny-warnings",
+    "lint:fix": "oxlint . --fix",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "test:watch": "vitest -w",
+    "test:ui": "vitest --ui"
+  },
+  "peerDependencies": {
+    "@azure-tools/typespec-azure-core": "workspace:^",
+    "@azure-tools/typespec-azure-resource-manager": "workspace:^",
+    "@azure-tools/typespec-data-exporter": "workspace:^",
+    "@typespec/compiler": "workspace:^",
+    "@typespec/http": "workspace:^",
+    "@typespec/rest": "workspace:^"
+  },
+  "devDependencies": {
+    "@azure-tools/typespec-azure-core": "workspace:^",
+    "@azure-tools/typespec-azure-resource-manager": "workspace:^",
+    "@azure-tools/typespec-data-exporter": "workspace:^",
+    "@types/node": "catalog:",
+    "@typespec/compiler": "workspace:^",
+    "@typespec/http": "workspace:^",
+    "@typespec/openapi": "workspace:^",
+    "@typespec/rest": "workspace:^",
+    "@typespec/versioning": "workspace:^",
+    "@vitest/coverage-v8": "catalog:",
+    "@vitest/ui": "catalog:",
+    "rimraf": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:",
+    "yaml": "catalog:"
+  }
+}

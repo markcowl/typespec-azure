@@ -1,0 +1,61 @@
+{
+  "name": "@azure-tools/typespec-data-exporter",
+  "version": "0.1.0",
+  "description": "Toolkit for building deterministic TypeSpec data exporters.",
+  "type": "module",
+  "license": "MIT",
+  "author": "Microsoft Corporation",
+  "keywords": [
+    "typespec",
+    "emitter",
+    "exporter"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Azure/typespec-azure.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Azure/typespec-azure/issues"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "main": "dist/src/index.js",
+  "types": "dist/src/index.d.ts",
+  "files": [
+    "dist/**",
+    "!dist/test/**"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/src/index.d.ts",
+      "import": "./dist/src/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "watch": "tsc -p tsconfig.build.json --watch",
+    "clean": "rimraf ./dist ./temp",
+    "lint": "oxlint . --deny-warnings",
+    "lint:fix": "oxlint . --fix",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "test:watch": "vitest -w",
+    "test:ui": "vitest --ui"
+  },
+  "dependencies": {
+    "yaml": "catalog:"
+  },
+  "peerDependencies": {
+    "@typespec/compiler": "workspace:^"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "@typespec/compiler": "workspace:^",
+    "@vitest/coverage-v8": "catalog:",
+    "@vitest/ui": "catalog:",
+    "rimraf": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}
