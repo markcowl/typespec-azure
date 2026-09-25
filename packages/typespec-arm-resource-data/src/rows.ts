@@ -114,16 +114,16 @@ function flattenOperations(
 }
 
 function compareResources(left: ArmResourceRow, right: ArmResourceRow): number {
-  return `${left.resourceKey}|${left.resourceName}`.localeCompare(
-    `${right.resourceKey}|${right.resourceName}`,
+  return `${left.resourceName}|${left.resourceKey}`.localeCompare(
+    `${right.resourceName}|${right.resourceKey}`,
   );
 }
 
 function compareOperations(left: ArmOperationRow, right: ArmOperationRow): number {
-  return [left.operationKey, left.resourceKey, left.operationKind, left.operationName]
+  return [left.resourceName, left.operationName, left.operationKey, left.operationKind]
     .join("|")
     .localeCompare(
-      [right.operationKey, right.resourceKey, right.operationKind, right.operationName].join("|"),
+      [right.resourceName, right.operationName, right.operationKey, right.operationKind].join("|"),
     );
 }
 

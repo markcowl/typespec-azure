@@ -130,4 +130,33 @@ describe("ARM resource row collection", () => {
       operations: [],
     });
   });
+
+  it("sorts resources by name and operations by resource then operation name", () => {
+    const zebra = resource();
+    zebra.resourceName = "Zebra";
+    zebra.operations.lifecycle.read![0].name = "alpha";
+
+    const alpha = resource();
+    alpha.resourceName = "Alpha";
+    alpha.operations.lifecycle.read![0].name = "zebra";
+
+    const datasets = collectResolvedArmResourceData(
+      { resources: [zebra, alpha] },
+      { projectRoot: "C:/repo" },
+    );
+
+    expect(datasets.resources.map((row) => row.resourceName)).toEqual(["Alpha", "Zebra"]);
+    expect(datasets.operations.map((row) => `${row.resourceName}.${row.operationName}`)).toEqual([
+      "Alpha.create",
+      "Alpha.export",
+      "Alpha.list",
+      "Alpha.restart",
+      "Alpha.zebra",
+      "Zebra.alpha",
+      "Zebra.create",
+      "Zebra.export",
+      "Zebra.list",
+      "Zebra.restart",
+    ]);
+  });
 });

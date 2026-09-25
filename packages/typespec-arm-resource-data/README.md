@@ -26,4 +26,6 @@ options:
 
 `resourceKey` combines a lowercase ARM resource type with a normalized resource instance path. `operationKey` combines the lowercase HTTP verb with a normalized operation path. ARM literal path segments are lowercased and every path parameter segment is represented as `{}`, so parameter naming and casing differences do not prevent SDK comparisons.
 
+Resource rows are sorted by resource name. Operation rows are sorted by resource name and then operation name. Canonical keys provide deterministic tie-breakers.
+
 The package also exports `collectArmResourceData`, row types, and canonicalization helpers for automation that should consume typed data directly.
