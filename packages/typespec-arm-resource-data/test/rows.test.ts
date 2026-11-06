@@ -81,6 +81,14 @@ function resource(): ResolvedResource {
   };
 }
 
+function resourceWith(name: string, path: string): ResolvedResource {
+  const value = resource();
+  value.resourceName = name;
+  value.resourceInstancePath = path;
+  value.type = sourceTarget(`model ${name} {}`, name);
+  return value;
+}
+
 describe("ARM resource row collection", () => {
   it("flattens lifecycle, list, action, and associated operations", () => {
     const datasets = collectResolvedArmResourceData(
@@ -129,6 +137,97 @@ describe("ARM resource row collection", () => {
       resources: [],
       operations: [],
     });
+  });
+
+  it("reports different resource names at paths with case-only differences", () => {
+    const datasets = collectResolvedArmResourceData(
+      {
+        resources: [
+          resourceWith(
+            "Alpha",
+            "/Subscriptions/{subscriptionId}/providers/Microsoft.Test/Widgets/{widgetName}",
+          ),
+          resourceWith(
+            "Beta",
+            "/subscriptions/{subscriptionId}/providers/microsoft.test/widgets/{widgetName}",
+          ),
+        ],
+      },
+      { projectRoot: "C:/repo" },
+    );
+
+    expect(datasets.resources.every((row) => row.duplicateResourceError)).toBe(true);
+    expect(datasets.resources[0].duplicateResourceErrorAnalysis).toContain(
+      'Normalized ARM resource instance path "/subscriptions/{}/providers/microsoft.test/widgets/{}"',
+    );
+    expect(datasets.resources[0].duplicateResourceErrorAnalysis).toContain(
+      "Alpha [Microsoft.Test/Widgets; main.tsp#L1:7]",
+    );
+    expect(datasets.resources[0].duplicateResourceErrorAnalysis).toContain(
+      "Beta [Microsoft.Test/Widgets; main.tsp#L1:7]",
+    );
+  });
+
+  it("reports different resource names when only path parameter names differ", () => {
+    const datasets = collectResolvedArmResourceData(
+      {
+        resources: [
+          resourceWith(
+            "Alpha",
+            "/subscriptions/{subscriptionId}/providers/Microsoft.Test/Widgets/{widgetName}",
+          ),
+          resourceWith("Beta", "/subscriptions/{sub}/providers/Microsoft.Test/Widgets/{name}"),
+        ],
+      },
+      { projectRoot: "C:/repo" },
+    );
+
+    expect(datasets.resources.map((row) => row.duplicateResourceError)).toEqual([true, true]);
+  });
+
+  it("does not report resources with the same resource name", () => {
+    const datasets = collectResolvedArmResourceData(
+      {
+        resources: [
+          resourceWith(
+            "Widget",
+            "/subscriptions/{subscriptionId}/providers/Microsoft.Test/Widgets/{widgetName}",
+          ),
+          resourceWith("Widget", "/Subscriptions/{sub}/providers/microsoft.test/widgets/{name}"),
+        ],
+      },
+      { projectRoot: "C:/repo" },
+    );
+
+    expect(
+      datasets.resources.map((row) => ({
+        error: row.duplicateResourceError,
+        analysis: row.duplicateResourceErrorAnalysis,
+      })),
+    ).toEqual([
+      { error: false, analysis: "" },
+      { error: false, analysis: "" },
+    ]);
+  });
+
+  it("lists every distinct resource name for a normalized path", () => {
+    const path = "/subscriptions/{sub}/providers/Microsoft.Test/Widgets/{name}";
+    const datasets = collectResolvedArmResourceData(
+      {
+        resources: [
+          resourceWith("Gamma", path),
+          resourceWith("Alpha", path),
+          resourceWith("Beta", path),
+        ],
+      },
+      { projectRoot: "C:/repo" },
+    );
+
+    const analyses = new Set(datasets.resources.map((row) => row.duplicateResourceErrorAnalysis));
+    expect(analyses.size).toBe(1);
+    expect([...analyses][0]).toBe(
+      'Normalized ARM resource instance path "/subscriptions/{}/providers/microsoft.test/widgets/{}" is shared by resources with distinct resourceName values: Alpha [Microsoft.Test/Widgets; main.tsp#L1:7]; Beta [Microsoft.Test/Widgets; main.tsp#L1:7]; Gamma [Microsoft.Test/Widgets; main.tsp#L1:7].',
+    );
   });
 
   it("sorts resources by name and operations by resource then operation name", () => {

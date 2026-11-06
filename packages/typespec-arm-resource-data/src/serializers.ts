@@ -14,6 +14,11 @@ const resourceCsvSerializer = createCsvSerializer<ArmResourceRow>({
     { header: "resourceInstancePath", value: (row) => row.resourceInstancePath },
     { header: "resourceName", value: (row) => row.resourceName },
     { header: "resourceDefinition", value: (row) => row.resourceDefinition },
+    { header: "duplicateResourceError", value: (row) => row.duplicateResourceError },
+    {
+      header: "duplicateResourceErrorAnalysis",
+      value: (row) => row.duplicateResourceErrorAnalysis,
+    },
     { header: "bicepResource", value: (row) => row.bicepResource },
     { header: "readOperation", value: (row) => row.readOperation.join(";") },
     {

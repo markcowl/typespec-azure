@@ -12,7 +12,12 @@ import {
   type SourceReferenceOptions,
 } from "@azure-tools/typespec-data-exporter";
 import type { Program } from "@typespec/compiler";
-import { createOperationKey, createResourceKey, formatResourceType } from "./canonicalization.js";
+import {
+  createOperationKey,
+  createResourceKey,
+  formatResourceType,
+  normalizeArmPath,
+} from "./canonicalization.js";
 
 export interface ArmResourceRow {
   resourceKey: string;
@@ -20,6 +25,8 @@ export interface ArmResourceRow {
   resourceInstancePath: string;
   resourceName: string;
   resourceDefinition: string;
+  duplicateResourceError: boolean;
+  duplicateResourceErrorAnalysis: string;
   bicepResource: boolean;
   readOperation: string[];
   createOrUpdateOperation: string[];
@@ -127,6 +134,38 @@ function compareOperations(left: ArmOperationRow, right: ArmOperationRow): numbe
     );
 }
 
+function addDuplicateResourceErrors(resources: ArmResourceRow[]): void {
+  const resourcesByPath = new Map<string, ArmResourceRow[]>();
+  for (const resource of resources) {
+    const normalizedPath = normalizeArmPath(resource.resourceInstancePath);
+    const matchingResources = resourcesByPath.get(normalizedPath) ?? [];
+    matchingResources.push(resource);
+    resourcesByPath.set(normalizedPath, matchingResources);
+  }
+
+  for (const [normalizedPath, matchingResources] of resourcesByPath) {
+    if (new Set(matchingResources.map((resource) => resource.resourceName)).size < 2) {
+      continue;
+    }
+
+    const identities = [
+      ...new Set(
+        matchingResources.map(
+          (resource) =>
+            `${resource.resourceName} [${resource.resourceType}; ${resource.resourceDefinition}]`,
+        ),
+      ),
+    ].sort();
+    const analysis =
+      `Normalized ARM resource instance path "${normalizedPath}" is shared by resources with ` +
+      `distinct resourceName values: ${identities.join("; ")}.`;
+    for (const resource of matchingResources) {
+      resource.duplicateResourceError = true;
+      resource.duplicateResourceErrorAnalysis = analysis;
+    }
+  }
+}
+
 export function collectArmResourceData(
   program: Program,
   options: CollectArmResourceDataOptions,
@@ -148,6 +187,8 @@ export function collectResolvedArmResourceData(
       resourceName: resource.resourceName,
       resourceDefinition: getSourceReference(resource.type, options, options.sourceLinkResolver)
         .reference,
+      duplicateResourceError: false,
+      duplicateResourceErrorAnalysis: "",
       bicepResource: readOperations.length > 0 && createOperations.length > 0,
       readOperation: sortedLinks(readOperations, options),
       createOrUpdateOperation: sortedLinks(createOperations, options),
@@ -156,6 +197,7 @@ export function collectResolvedArmResourceData(
   const operations = (provider.resources ?? []).flatMap((resource) =>
     flattenOperations(resource, options),
   );
+  addDuplicateResourceErrors(resources);
   resources.sort(compareResources);
   operations.sort(compareOperations);
   return { resources, operations };

@@ -7,6 +7,8 @@ const resource: ArmResourceRow = {
   resourceInstancePath: "/widgets/{widgetName}",
   resourceName: "Widget",
   resourceDefinition: "main.tsp#L1:1",
+  duplicateResourceError: false,
+  duplicateResourceErrorAnalysis: "",
   bicepResource: true,
   readOperation: ["main.tsp#L2:1", "main.tsp#L3:1"],
   createOrUpdateOperation: ["main.tsp#L4:1"],

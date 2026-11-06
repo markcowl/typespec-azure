@@ -28,4 +28,11 @@ options:
 
 Resource rows are sorted by resource name. Operation rows are sorted by resource name and then operation name. Canonical keys provide deterministic tie-breakers.
 
+Resource rows also include duplicate-resource validation:
+
+- `duplicateResourceError` is `true` when two or more resolved resources have the same normalized resource instance path but different `resourceName` values.
+- `duplicateResourceErrorAnalysis` identifies the normalized path and each distinct resource identity by name, resource type, and source definition. It is empty when there is no error.
+
+Path comparison uses the same normalization as `resourceKey`: literal segments are case-insensitive and parameter segments are normalized independently of their parameter names.
+
 The package also exports `collectArmResourceData`, row types, and canonicalization helpers for automation that should consume typed data directly.

@@ -50,7 +50,7 @@ describe("ARM template emitter", () => {
     expect(diagnostics).toEqual([]);
     expect(Object.keys(outputs).sort()).toEqual(["operations.csv", "resources.csv"]);
     expect(outputs["resources.csv"]).toContain(
-      "resourceKey,resourceType,resourceInstancePath,resourceName,resourceDefinition,bicepResource,readOperation,createOrUpdateOperation",
+      "resourceKey,resourceType,resourceInstancePath,resourceName,resourceDefinition,duplicateResourceError,duplicateResourceErrorAnalysis,bicepResource,readOperation,createOrUpdateOperation",
     );
     expect(outputs["resources.csv"]).toContain("microsoft.test/widgets|/subscriptions/{}/");
     expect(outputs["resources.csv"]).toContain(",true,");
@@ -64,6 +64,8 @@ describe("ARM template emitter", () => {
     const resources = JSON.parse(outputs["resources.json"]) as ArmResourceRow[];
     const operations = JSON.parse(outputs["operations.json"]) as ArmOperationRow[];
     expect(resources[0].bicepResource).toBe(true);
+    expect(resources[0].duplicateResourceError).toBe(false);
+    expect(resources[0].duplicateResourceErrorAnalysis).toBe("");
     expect(resources[0].readOperation).toHaveLength(1);
     expect(operations.some((row) => row.operationKind === "list")).toBe(true);
   });
